@@ -74,6 +74,7 @@ func TestStats(t *testing.T) {
 	t.Run("data", func(t *testing.T) {
 		const reqDomain = "domain"
 		const respUpstream = "upstream"
+		const id = "id"
 
 		entries := []*stats.Entry{{
 			Domain:         reqDomain,
@@ -90,6 +91,13 @@ func TestStats(t *testing.T) {
 			Upstream:       respUpstream,
 			UpstreamTime:   time.Microsecond * 222222,
 		}}
+
+		_clientActivity := []map[string]uint64{}
+		for i := 0; i < 24; i++ {
+			_clientActivity = append(_clientActivity, map[string]uint64{id: uint64(i)})
+		}
+		// Add data to the last slice
+		_clientActivity[23]["127.0.0.1"] = uint64(2)
 
 		wantData := &stats.StatsResp{
 			TimeUnits:             "hours",
@@ -120,6 +128,7 @@ func TestStats(t *testing.T) {
 			NumReplacedSafesearch:   0,
 			NumReplacedParental:     0,
 			AvgProcessingTime:       0.123456,
+			ClientActivity:          _clientActivity[:],
 		}
 
 		for _, e := range entries {
@@ -141,10 +150,16 @@ func TestStats(t *testing.T) {
 	})
 
 	t.Run("reset", func(t *testing.T) {
+		const id = "id"
 		req := httptest.NewRequest(http.MethodPost, "/control/stats_reset", nil)
 		assertSuccessAndUnmarshal(t, nil, handlers["/control/stats_reset"], req)
 
 		_24zeroes := [24]uint64{}
+		_emptyClientActivity := []map[string]uint64{}
+		for i := 0; i < 24; i++ {
+			_emptyClientActivity = append(_emptyClientActivity, map[string]uint64{id: uint64(i)})
+		}
+
 		emptyData := &stats.StatsResp{
 			TimeUnits:             "hours",
 			TopQueried:            []map[string]uint64{},
@@ -156,6 +171,7 @@ func TestStats(t *testing.T) {
 			BlockedFiltering:      _24zeroes[:],
 			ReplacedSafebrowsing:  _24zeroes[:],
 			ReplacedParental:      _24zeroes[:],
+			ClientActivity:        _emptyClientActivity[:],
 		}
 
 		req = httptest.NewRequest(http.MethodGet, "/control/stats", nil)

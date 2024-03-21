@@ -24,6 +24,8 @@ const defaultStats = {
     numReplacedSafesearch: 0,
     avgProcessingTime: 0,
     timeUnits: TIME_UNITS.HOURS,
+    clientActivity: [],
+    activeClientInfo: {},
 };
 
 const stats = handleActions(
@@ -67,6 +69,8 @@ const stats = handleActions(
                 top_upstreams_responses: topUpstreamsResponses,
                 top_upstrems_avg_time: topUpstreamsAvgTime,
                 time_units: timeUnits,
+                client_activity: clientActivity,
+                active_client_info: activeClientInfo,
             } = payload;
 
             const newState = {
@@ -89,6 +93,8 @@ const stats = handleActions(
                 topUpstreamsResponses,
                 topUpstreamsAvgTime,
                 timeUnits,
+                clientActivity,
+                activeClientInfo,
             };
 
             return newState;

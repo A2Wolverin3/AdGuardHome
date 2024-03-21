@@ -423,6 +423,8 @@ func (s *StatsCtx) getData(limit uint32) (resp *StatsResp, ok bool) {
 			DNSQueries:           []uint64{},
 			ReplacedParental:     []uint64{},
 			ReplacedSafebrowsing: []uint64{},
+
+			ClientActivity: []topAddrs{},
 		}, true
 	}
 
@@ -500,11 +502,23 @@ func (s *StatsCtx) fillCollectedStats(data *StatsResp, units []*unitDB, curID ui
 		return
 	}
 
+	// Allocate ClientActivity after the 'daily' branch, since size will be different.
+	data.ClientActivity = make([]map[string]uint64, size)
+
 	for i, u := range units {
 		data.DNSQueries[i] += u.NTotal
 		data.BlockedFiltering[i] += u.NResult[RFiltered]
 		data.ReplacedSafebrowsing[i] += u.NResult[RSafeBrowsing]
 		data.ReplacedParental[i] += u.NResult[RParental]
+
+		clientActivity := make(map[string]uint64)
+		clientActivity["id"] = uint64(i)
+		for _, c := range u.Clients {
+			if s.shouldCountClient([]string{c.Name}) {
+				clientActivity[c.Name] += c.Count
+			}
+		}
+		data.ClientActivity[i] = clientActivity
 	}
 }
 
@@ -525,14 +539,29 @@ func (s *StatsCtx) fillCollectedStatsDaily(
 	hours := countHours(curHour, days)
 	units = units[len(units)-hours:]
 
+	data.ClientActivity = []map[string]uint64{}
+	var clientActivity map[string]uint64
+
 	for i := 0; i < len(units); i++ {
 		day := i / 24
+		partialday := uint64(i / 12)
 		u := units[i]
 
 		data.DNSQueries[day] += u.NTotal
 		data.BlockedFiltering[day] += u.NResult[RFiltered]
 		data.ReplacedSafebrowsing[day] += u.NResult[RSafeBrowsing]
 		data.ReplacedParental[day] += u.NResult[RParental]
+
+		if clientActivity == nil || clientActivity["id"] != partialday {
+			clientActivity = make(map[string]uint64)
+			clientActivity["id"] = partialday
+			data.ClientActivity = append(data.ClientActivity, clientActivity)
+		}
+		for _, c := range u.Clients {
+			if s.shouldCountClient([]string{c.Name}) {
+				clientActivity[c.Name] += c.Count
+			}
+		}
 	}
 }
 

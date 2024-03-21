@@ -2,6 +2,10 @@
 
 <!-- TODO(a.garipov): Reformat in accordance with the KeepAChangelog spec. -->
 
+## A2Wolverin3: API changes
+
+* Added 'client_activity' to stats.
+
 ## v0.108.0: API changes
 
 ## v0.107.44: API changes
@@ -1160,6 +1164,12 @@ Response:
 		blocked_filtering: [123, ...]
 		replaced_parental: [123, ...]
 		replaced_safebrowsing: [123, ...]
+
+		// once (hourly) or twice (daily) per time unit counters
+		client_activity: [
+			{id: unitId, client1Name: 123, client2Name: 123, ...},
+			...
+		]
 
 		top_queried_domains: [
 			{host: 123},
