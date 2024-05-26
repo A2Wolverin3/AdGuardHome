@@ -111,7 +111,31 @@ func TestStatsCtx_FillCollectedStats_daily(t *testing.T) {
 
 	dailyData := []*unitDB{}
 
-	for i := range daysCount * 24 {
+	// fillCollectedStats doesn't actually take in a parameter for how many days
+	// to get stats for. It assumes that data based on how many hours of 'units'
+	// are passed in. For this test, we want it to return 10 days of stats, so
+	// we should pass in at least 10*24 units. But the last day will likely be
+	// a partial set of units less than 24 since the current day isn't done yet.
+	// So to get up to that full set of 10*24 units, we have to pre-buffer a
+	// few. (These are essentially the last hours of 11 days ago, which will get
+	// dropped by fillCollectedStatsDaily, but need to be there so it knows we're
+	// actually asking for 10 days of data.)
+	hoursInToday := int(time.Now().Hour() % 24)
+	// Buffer the last hours on N+1 days ago.
+	for i := 0; i < 24-hoursInToday; i++ {
+		n := uint64(0)
+		nResult := make([]uint64, resultLast)
+		nResult[RFiltered] = n
+		nResult[RSafeBrowsing] = n
+		nResult[RParental] = n
+
+		dailyData = append(dailyData, &unitDB{
+			NTotal:  uint64(0),
+			NResult: nResult,
+		})
+	}
+	// Fill in N-1 days, and the last partial (to)day.
+	for i := 0; i < (daysCount-1)*24+hoursInToday; i++ {
 		n := uint64(i)
 		nResult := make([]uint64, resultLast)
 		nResult[RFiltered] = n
@@ -135,8 +159,7 @@ func TestStatsCtx_FillCollectedStats_daily(t *testing.T) {
 
 	data := &StatsResp{}
 
-	// In this way we will not skip first hours.
-	curID := uint32(daysCount * 24)
+	curID := uint32(daysCount*24) + uint32(hoursInToday)
 
 	s.fillCollectedStats(data, dailyData, curID)
 
