@@ -1447,6 +1447,12 @@ Response:
 		replaced_parental: [123, ...]
 		replaced_safebrowsing: [123, ...]
 
+		// once (hourly) or twice (daily) per time unit counters
+		client_activity: [
+		{id: unitId, client1Name: 123, client2Name: 123, ...},
+		...
+		]
+
 		top_queried_domains: [
 			{host: 123},
 			...

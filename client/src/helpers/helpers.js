@@ -441,7 +441,7 @@ export const getPathWithQueryString = (path, params) => {
     return `${path}?${searchParams.toString()}`;
 };
 
-export const getParamsForClientsSearch = (data, param, additionalParam) => {
+export const getClientKeys = (data, param, additionalParam) => {
     const clients = new Set();
     data.forEach((e) => {
         clients.add(e[param]);
@@ -449,8 +449,29 @@ export const getParamsForClientsSearch = (data, param, additionalParam) => {
             clients.add(e[additionalParam]);
         }
     });
+
+    return Array.from(clients.values());
+};
+
+// In this case, 'data' is not an array of client-centric objects with a particular
+// parameter containing the name of the client. Instead it is an array of objects
+// where client names exist as keys in each object and can be repeated from one
+// object to the next.
+export const getClientKeysFromActivity = (clientActivity, ignore_param) => {
+    const keys = [];
+    clientActivity.forEach((d) => {
+        Object.keys(d).forEach((key) => {
+            if (key !== ignore_param && !keys.includes(key)) {
+                keys.push(key);
+            }
+        });
+    });
+
+    return keys;
+};
+
+export const getParamsForClientsSearch = (ids) => {
     const params = {};
-    const ids = Array.from(clients.values());
     ids.forEach((id, i) => {
         params[`ip${i}`] = id;
     });

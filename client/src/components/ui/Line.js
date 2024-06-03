@@ -32,8 +32,8 @@ const Line = ({
             max: 'auto',
         }}
         crosshairType="x"
-        axisLeft={false}
-        axisBottom={false}
+        axisLeft={null}
+        axisBottom={null}
         enableGridX={false}
         enableGridY={false}
         enablePoints={false}

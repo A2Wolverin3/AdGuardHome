@@ -84,7 +84,7 @@ const config = {
             },
             {
                 test: /\.js$/,
-                exclude: /node_modules/,
+                exclude: /node_modules\/(?!(@react-spring)\/).*/,
                 use: {
                     loader: 'babel-loader',
                     options: {
