@@ -1,22 +1,15 @@
 import React from 'react';
 import { ResponsiveLine } from '@nivo/line';
-import addDays from 'date-fns/add_days';
-import subDays from 'date-fns/sub_days';
-import subHours from 'date-fns/sub_hours';
-import dateFormat from 'date-fns/format';
 import round from 'lodash/round';
-import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 import './Line.css';
-import { msToDays, msToHours } from '../../helpers/helpers';
-import { TIME_UNITS } from '../../helpers/constants';
 
 const Line = ({
-    data, color = 'black',
+    data,
+    color = 'black',
+    formatX = (x) => x,
+    formatY = (y) => round(y, 2),
 }) => {
-    const interval = useSelector((state) => state.stats.interval);
-    const timeUnits = useSelector((state) => state.stats.timeUnits);
-
     return <ResponsiveLine
         enableArea
         animate
@@ -44,16 +37,8 @@ const Line = ({
         enableGridX={false}
         enableGridY={false}
         enablePoints={false}
-        xFormat={(x) => {
-            if (timeUnits === TIME_UNITS.HOURS) {
-                const hoursAgo = msToHours(interval) - x - 1;
-                return dateFormat(subHours(Date.now(), hoursAgo), 'D MMM HH:00');
-            }
-
-            const daysAgo = subDays(Date.now(), msToDays(interval) - 1);
-            return dateFormat(addDays(daysAgo, x), 'D MMM YYYY');
-        }}
-        yFormat={(y) => round(y, 2)}
+        xFormat={formatX}
+        yFormat={formatY}
         sliceTooltip={(slice) => {
             const { xFormatted, yFormatted } = slice.slice.points[0].data;
             return <div className="line__tooltip">
@@ -69,6 +54,8 @@ const Line = ({
 
 Line.propTypes = {
     data: PropTypes.array.isRequired,
+    formatX: PropTypes.func,
+    formatY: PropTypes.func,
     color: PropTypes.string,
     width: PropTypes.number,
     height: PropTypes.number,
