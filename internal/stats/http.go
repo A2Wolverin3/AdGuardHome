@@ -52,6 +52,12 @@ type StatsResp struct {
 func (s *StatsCtx) handleStats(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
+	q := r.URL.Query()
+	limit, err := time.ParseDuration(q.Get("limit"))
+	if err != nil {
+		limit = s.limit
+	}
+
 	var (
 		resp *StatsResp
 		ok   bool
@@ -60,7 +66,7 @@ func (s *StatsCtx) handleStats(w http.ResponseWriter, r *http.Request) {
 		s.confMu.RLock()
 		defer s.confMu.RUnlock()
 
-		resp, ok = s.getData(uint32(s.limit.Hours()))
+		resp, ok = s.getData(uint32(limit.Hours()))
 	}()
 
 	log.Debug("stats: prepared data in %v", time.Since(start))
@@ -81,7 +87,7 @@ type configResp struct {
 	IntervalDays uint32 `json:"interval"`
 }
 
-// getConfigResp is the response to the GET /control/stats_info.
+// getConfigResp is the response to the GET /control/stats/config.
 type getConfigResp struct {
 	// Ignored is the list of host names, which should not be counted.
 	Ignored []string `json:"ignored"`

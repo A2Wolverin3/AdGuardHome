@@ -10220,14 +10220,14 @@ body.fixed-header .page {
     line-height: 2.5rem;
 }
 
-.page-title__protection {
+.page-title__flex-stretch {
     display: flex;
     align-items: stretch;
     margin: 0 0.5rem;
 }
 
 @media (max-width: 767.98px) {
-    .page-title__protection {
+    .page-title__flex-stretch {
         margin: 0.5rem 0;
     }
 }

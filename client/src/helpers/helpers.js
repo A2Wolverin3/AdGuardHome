@@ -406,6 +406,26 @@ export const secondsToMilliseconds = (seconds) => {
 
 export const msToDays = (milliseconds) => Math.floor(milliseconds / 1000 / 60 / 60 / 24);
 
+export const getIntervalText = (milliseconds) => {
+    if (!milliseconds) {
+        return 'Default';
+    }
+
+    const hours = msToHours(milliseconds);
+    if (hours < 100) {
+        if (hours > 1) {
+            return i18n.t('interval_hours_plural', { count: hours });
+        }
+        return i18n.t('interval_hours', { count: hours });
+    }
+
+    const days = msToDays(milliseconds);
+    if (days > 1) {
+        return i18n.t('interval_days_plural', { count: days });
+    }
+    return i18n.t('interval_days', { count: days });
+};
+
 export const normalizeRulesTextarea = (text) => text?.replace(/^\n/g, '')
     .replace(/\n\s*\n/g, '\n');
 
@@ -436,8 +456,11 @@ export const normalizeWhois = (whois) => {
 };
 
 export const getPathWithQueryString = (path, params) => {
-    const searchParams = new URLSearchParams(params);
+    if (!params) {
+        return path;
+    }
 
+    const searchParams = new URLSearchParams(params);
     return `${path}?${searchParams.toString()}`;
 };
 
@@ -749,6 +772,15 @@ export const replaceEmptyStringsWithZeroes = (values) => Object.entries(values)
  * @returns {string}
  */
 export const replaceZeroWithEmptyString = (value) => (parseInt(value, 10) === 0 ? '' : value);
+
+/**
+ *
+ * @param {number} report_interval
+ * @returns {string}
+ */
+export const getDashboardUrlParams = (report_interval) => `?${queryString.stringify({
+    report_interval: report_interval || undefined,
+})}`;
 
 /**
  * @param {string} search

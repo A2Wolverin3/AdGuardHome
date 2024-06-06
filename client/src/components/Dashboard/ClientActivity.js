@@ -15,8 +15,10 @@ import Bar from '../ui/Bar';
 const ClientActivity = ({
     t, subtitle, refreshButton, clientActivity, clientInfo,
 }) => {
-    const interval = useSelector((state) => state.stats.interval);
-    const timeUnits = useSelector((state) => state.stats.timeUnits);
+    const {
+        reportInterval: interval,
+        timeUnits,
+    } = useSelector((state) => state.stats);
 
     const keys = clientInfo?.activeKeys ?? clientActivity.forEach((slice) => {
         Object.keys(slice).forEach((key) => {

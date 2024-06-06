@@ -107,6 +107,14 @@ const stats = handleActions(
             ...defaultStats,
             processingReset: false,
         }),
+
+        [actions.setReportIntervalRequest]: (state) => ({ ...state, processingReportInterval: true }),
+        [actions.setReportIntervalFailure]: (state) => ({ ...state, processingReportInterval: false }),
+        [actions.setReportIntervalSuccess]: (state, { payload }) => ({
+            ...state,
+            reportInterval: payload.reportInterval,
+            processingReportInterval: false,
+        }),
     },
     {
         processingGetConfig: false,

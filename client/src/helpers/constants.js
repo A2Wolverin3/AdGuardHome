@@ -231,6 +231,8 @@ export const STATS_INTERVALS_DAYS = [DAY, DAY * 7, DAY * 30, DAY * 90];
 
 export const QUERY_LOG_INTERVALS_DAYS = [HOUR * 6, DAY, DAY * 7, DAY * 30, DAY * 90];
 
+export const REPORT_INTERVALS_DAYS = [HOUR * 6, DAY, DAY * 5, DAY * 7, DAY * 30, DAY * 90];
+
 export const RETENTION_CUSTOM = 1;
 
 export const RETENTION_CUSTOM_INPUT = 'custom_retention_input';
