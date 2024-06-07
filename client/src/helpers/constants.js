@@ -468,6 +468,7 @@ export const FORM_NAME = {
     LOGIN: 'login',
     CACHE: 'cache',
     MOBILE_CONFIG: 'mobileConfig',
+    CLIENT_ACTIVITY_FILTER: 'clientActivityFilter',
     ...DHCP_FORM_NAMES,
 };
 

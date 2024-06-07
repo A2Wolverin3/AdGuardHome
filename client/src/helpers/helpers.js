@@ -481,11 +481,16 @@ export const getClientKeys = (data, param, additionalParam) => {
 // where client names exist as keys in each object and can be repeated from one
 // object to the next.
 export const getClientKeysFromActivity = (clientActivity, ignore_param) => {
-    const keys = [];
+    const keys = {};
+
     clientActivity.forEach((d) => {
         Object.keys(d).forEach((key) => {
-            if (key !== ignore_param && !keys.includes(key)) {
-                keys.push(key);
+            if (key !== ignore_param) {
+                if (key in keys) {
+                    keys[key] += d[key];
+                } else {
+                    keys[key] = d[key];
+                }
             }
         });
     });
