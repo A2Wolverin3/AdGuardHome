@@ -46,3 +46,7 @@
 .icon--lightgray {
     color: var(--gray-8);
 }
+
+.icon--left-25 {
+    left: -25px;
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { withTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
@@ -7,10 +7,11 @@ import subDays from 'date-fns/sub_days';
 import addHours from 'date-fns/add_hours';
 import subHours from 'date-fns/sub_hours';
 import dateFormat from 'date-fns/format';
-import { msToDays, msToHours } from '../../helpers/helpers';
+import { msToDays, msToHours, getClientKeysFromActivity } from '../../helpers/helpers';
 import { TIME_UNITS } from '../../helpers/constants';
 import { RootState } from '../../initialState';
 
+import ClientActivityFilter from './ClientActivityFilter';
 import Card from '../ui/Card';
 import Bar from '../ui/Bar';
 
@@ -27,14 +28,6 @@ const ClientActivity = ({ t, subtitle, refreshButton, clientActivity, clientInfo
         reportInterval: interval,
         timeUnits,
     } = useSelector((state: RootState) => state.stats);
-
-    const keys: string[] = clientInfo?.activeKeys ?? clientActivity.forEach((slice: any) => {
-        Object.keys(slice).forEach((key: string) => {
-            if (key !== 'id' && key !== 'ts' && !keys.includes(key)) {
-                keys.push(key);
-            }
-        });
-    });
 
     const formatClientId = (id: string) => {
         const name = clientInfo?.mappedNames[id];
@@ -68,17 +61,55 @@ const ClientActivity = ({ t, subtitle, refreshButton, clientActivity, clientInfo
         return dateFormat(addHours(addDays(daysAgo, idx / 2), 12 * (idx % 2)), format);
     };
 
+    const filterKeys = (keys: any, filter?: any) => {
+        return Object.keys(keys)
+            // First filter by name...
+            .filter((ip: string) => {
+                if (!ip || !filter || !filter.search) {
+                    return true;
+                }
+                const search = filter.search.toUpperCase();
+                if (ip.toUpperCase().includes(search)) {
+                    return true;
+                }
+                if (clientInfo?.mappedNames[ip]?.toUpperCase().includes(search)) {
+                    return true;
+                }
+                return false;
+            })
+            // Then order by usage and filter the top of clients that matched the filter
+            .sort((a: string, b: string) => keys[b] - keys[a])
+            .filter((_, idx: number) => (!filter || !filter.limit || idx < filter.limit));
+    };
+
+    // Make sure we've got our key info. If not, we'll have to generate it now.
+    // Get the list in sorted order by count, highest to lowest.
+    const activeKeys = clientInfo?.activeKeys ?? getClientKeysFromActivity(clientActivity, ['id', 'ts']) ?? {};
+    const [filteredKeys, setFilteredKeys] = useState(filterKeys(activeKeys /* no initial filter */));
+
+    const filterAndRefresh = <div className="d-flex align-items-center ml-auto">
+        <ClientActivityFilter
+            className="d-flex mr-3"
+            initialValues={{}}
+            maxClients={Object.keys(activeKeys).length}
+            applyFilter={(filter) => {
+                setFilteredKeys(filterKeys(activeKeys, filter));
+            }}
+        />
+        {refreshButton}
+    </div>;
+
     return <Card
         title={t('stats_client_activity')}
         subtitle={subtitle}
         type="card--full"
         bodyType="card-wrap"
-        refresh={refreshButton}
+        refresh={filterAndRefresh}
     >
         <div className="card-barchart-bg">
             <Bar data={clientActivity}
                 indexBy="id"
-                keys={keys}
+                keys={filteredKeys}
                 formatId={formatClientId}
                 formatIndex={formatIndex}
             />

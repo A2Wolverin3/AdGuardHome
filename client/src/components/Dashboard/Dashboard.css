@@ -22,6 +22,15 @@
     border-bottom: 6px solid #585965;
 }
 
+.field__filter-search {
+    display: flex;
+    flex-grow: 1;
+}
+
+.field__filter-limit {
+    display: flex;
+}
+
 .table__action {
     position: relative;
     margin-left: auto;
