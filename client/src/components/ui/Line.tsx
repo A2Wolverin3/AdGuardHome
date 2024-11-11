@@ -17,13 +17,11 @@ interface LineProps {
     color?: string;
     width?: number;
     height?: number;
+    formatX?: (x: number) => string;
+    formatY?: (x: number) => string;
 }
 
-const Line = ({ data, color = 'black' }: LineProps) => {
-    const interval = useSelector((state: RootState) => state.stats.interval);
-
-    const timeUnits = useSelector((state: RootState) => state.stats.timeUnits);
-
+const Line = ({ data, color = 'black', formatX = (x) => String(x), formatY = (y) => String(round(y, 2)) }: LineProps) => {
     return (
         <ResponsiveLine
             enableArea
@@ -52,17 +50,8 @@ const Line = ({ data, color = 'black' }: LineProps) => {
             enableGridX={null}
             enableGridY={null}
             enablePoints={null}
-            xFormat={(x: number) => {
-                if (timeUnits === TIME_UNITS.HOURS) {
-                    const hoursAgo = msToHours(interval) - x - 1;
-                    return dateFormat(subHours(Date.now(), hoursAgo), 'D MMM HH:00');
-                }
-
-                const daysAgo = subDays(Date.now(), msToDays(interval) - 1);
-
-                return dateFormat(addDays(daysAgo, x), 'D MMM YYYY');
-            }}
-            yFormat={(y: number) => round(y, 2)}
+            xFormat={formatX}
+            yFormat={formatY}
             sliceTooltip={(slice) => {
                 const { xFormatted, yFormatted } = slice.slice.points[0].data;
 

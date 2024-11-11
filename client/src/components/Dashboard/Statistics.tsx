@@ -8,10 +8,9 @@ import StatsCard from './StatsCard';
 import { getPercent, normalizeHistory } from '../../helpers/helpers';
 import { RESPONSE_FILTER } from '../../helpers/constants';
 
-const getNormalizedHistory = (data: any, interval: any, id: any) => [{ data: normalizeHistory(data), id }];
+const getNormalizedHistory = (data: any, id: any) => [{ data: normalizeHistory(data), id }];
 
 interface StatisticsProps {
-    interval: number;
     dnsQueries: number[];
     blockedFiltering: unknown[];
     replacedSafebrowsing: unknown[];
@@ -24,7 +23,6 @@ interface StatisticsProps {
 }
 
 const Statistics = ({
-    interval,
     dnsQueries,
     blockedFiltering,
     replacedSafebrowsing,
@@ -38,7 +36,7 @@ const Statistics = ({
         <div className="col-sm-6 col-lg-3">
             <StatsCard
                 total={numDnsQueries}
-                lineData={getNormalizedHistory(dnsQueries, interval, 'dnsQuery')}
+                lineData={getNormalizedHistory(dnsQueries, 'dnsQuery')}
                 title={
                     <Link to="logs">
                         <Trans>dns_query</Trans>
@@ -51,7 +49,7 @@ const Statistics = ({
         <div className="col-sm-6 col-lg-3">
             <StatsCard
                 total={numBlockedFiltering}
-                lineData={getNormalizedHistory(blockedFiltering, interval, 'blockedFiltering')}
+                lineData={getNormalizedHistory(blockedFiltering, 'blockedFiltering')}
                 percent={getPercent(numDnsQueries, numBlockedFiltering)}
                 title={
                     <Trans
@@ -70,7 +68,7 @@ const Statistics = ({
         <div className="col-sm-6 col-lg-3">
             <StatsCard
                 total={numReplacedSafebrowsing}
-                lineData={getNormalizedHistory(replacedSafebrowsing, interval, 'replacedSafebrowsing')}
+                lineData={getNormalizedHistory(replacedSafebrowsing, 'replacedSafebrowsing')}
                 percent={getPercent(numDnsQueries, numReplacedSafebrowsing)}
                 title={
                     <Link to={`logs?response_status=${RESPONSE_FILTER.BLOCKED_THREATS.QUERY}`}>
@@ -84,7 +82,7 @@ const Statistics = ({
         <div className="col-sm-6 col-lg-3">
             <StatsCard
                 total={numReplacedParental}
-                lineData={getNormalizedHistory(replacedParental, interval, 'replacedParental')}
+                lineData={getNormalizedHistory(replacedParental, 'replacedParental')}
                 percent={getPercent(numDnsQueries, numReplacedParental)}
                 title={
                     <Link to={`logs?response_status=${RESPONSE_FILTER.BLOCKED_ADULT_WEBSITES.QUERY}`}>
