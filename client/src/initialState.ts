@@ -190,6 +190,7 @@ export type StatsData = {
     processingStats: boolean;
     processingReset: boolean;
     interval: number;
+    reportInterval?: number;
     customInterval?: number;
     dnsQueries: number[];
     blockedFiltering: number[];
@@ -596,6 +597,7 @@ export const initialState: RootState = {
         processingStats: true,
         processingReset: false,
         interval: DAY,
+        reportInterval: null,
         customInterval: null,
         dnsQueries: [],
         blockedFiltering: [],

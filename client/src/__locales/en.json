@@ -546,6 +546,8 @@
     "interval_24_hour": "24 hours",
     "interval_days": "{{count}} day",
     "interval_days_plural": "{{count}} days",
+    "report_interval": "Report Interval: {{interval_text}}",
+    "report_interval_set": "Report interval set to: {{interval_text}}",
     "domain": "Domain",
     "ecs": "ECS",
     "punycode": "Punycode",

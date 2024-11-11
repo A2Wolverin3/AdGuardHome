@@ -554,10 +554,10 @@ class Api {
 
     STATS_RESET = { path: 'stats_reset', method: 'POST' };
 
-    getStats() {
+    getStats(params: any) {
         const { path, method } = this.GET_STATS;
-
-        return this.makeRequest(path, method);
+        const url = getPathWithQueryString(path, params);
+        return this.makeRequest(url, method);
     }
 
     getStatsConfig() {

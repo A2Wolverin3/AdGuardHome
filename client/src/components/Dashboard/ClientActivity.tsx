@@ -23,8 +23,10 @@ interface ClientActivityProps {
 }
 
 const ClientActivity = ({ t, subtitle, refreshButton, clientActivity, clientInfo }: ClientActivityProps) => {
-    const interval = useSelector((state: RootState) => state.stats.interval);
-    const timeUnits = useSelector((state: RootState) => state.stats.timeUnits);
+    const {
+        reportInterval: interval,
+        timeUnits,
+    } = useSelector((state: RootState) => state.stats);
 
     const keys: string[] = clientInfo?.activeKeys ?? clientActivity.forEach((slice: any) => {
         Object.keys(slice).forEach((key: string) => {

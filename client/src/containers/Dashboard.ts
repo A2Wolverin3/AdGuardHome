@@ -1,7 +1,7 @@
 import { connect } from 'react-redux';
 
 import { toggleProtection, getClients } from '../actions';
-import { getStats, getStatsConfig, setStatsConfig } from '../actions/stats';
+import { getStats, getStatsConfig, setStatsConfig, setReportInterval } from '../actions/stats';
 import { getAccessList } from '../actions/access';
 
 import Dashboard from '../components/Dashboard';
@@ -19,6 +19,7 @@ type DispatchProps = {
     getStats: (...args: unknown[]) => unknown;
     getStatsConfig: (...args: unknown[]) => unknown;
     getAccessList: () => (dispatch: any) => void;
+    setReportInterval: (reportInterval: number, showToast: boolean) => void;
 }
 
 const mapDispatchToProps: DispatchProps = {
@@ -27,6 +28,7 @@ const mapDispatchToProps: DispatchProps = {
     getStats,
     getStatsConfig,
     getAccessList,
+    setReportInterval,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(Dashboard);

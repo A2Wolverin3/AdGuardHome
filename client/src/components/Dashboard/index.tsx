@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 
 import { HashLink as Link } from 'react-router-hash-link';
 import { Trans, useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
+import queryString from 'query-string';
 import classNames from 'classnames';
 
 import Statistics from './Statistics';
@@ -10,8 +12,8 @@ import Clients from './Clients';
 import ClientActivity from './ClientActivity';
 import QueriedDomains from './QueriedDomains';
 import BlockedDomains from './BlockedDomains';
-import { DISABLE_PROTECTION_TIMINGS, ONE_SECOND_IN_MS, SETTINGS_URLS, TIME_UNITS } from '../../helpers/constants';
-import { msToSeconds, msToMinutes, msToHours, msToDays } from '../../helpers/helpers';
+import { DISABLE_PROTECTION_TIMINGS, ONE_SECOND_IN_MS, SETTINGS_URLS, TIME_UNITS, REPORT_INTERVALS_DAYS } from '../../helpers/constants';
+import { msToSeconds, msToMinutes, msToHours, msToDays, getIntervalText, getDashboardUrlParams } from '../../helpers/helpers';
 
 import PageTitle from '../ui/PageTitle';
 
@@ -33,6 +35,7 @@ interface DashboardProps {
     toggleProtection: (...args: unknown[]) => unknown;
     getClients: (...args: unknown[]) => unknown;
     getAccessList: () => (dispatch: any) => void;
+    setReportInterval: (reportInterval: number, showToast?: boolean) => void;
 }
 
 const Dashboard = ({
@@ -43,8 +46,11 @@ const Dashboard = ({
     toggleProtection,
     stats,
     access,
+    setReportInterval,
 }: DashboardProps) => {
     const { t } = useTranslation();
+    const history = useHistory();
+    const reportInterval = parseInt(queryString.parse(history.location.search).report_interval as string, 10) || 0;
 
     const getAllStats = () => {
         getAccessList();
@@ -53,25 +59,29 @@ const Dashboard = ({
     };
 
     useEffect(() => {
+        if (reportInterval) {
+            setReportInterval(reportInterval, false);
+        }
         getAllStats();
-    }, []);
+    }, [reportInterval]);
     const getSubtitle = () => {
         if (!stats.enabled) {
             return t('stats_disabled_short');
         }
 
         const msIn7Days = 604800000;
+        const currentInterval = stats.reportInterval || stats.interval;
 
-        if (stats.timeUnits === TIME_UNITS.HOURS && stats.interval === msIn7Days) {
-            return t('for_last_days', { count: msToDays(stats.interval) });
+        if (stats.timeUnits === TIME_UNITS.HOURS && currentInterval === msIn7Days) {
+            return t('for_last_days', { count: msToDays(currentInterval) });
         }
 
         return stats.timeUnits === TIME_UNITS.HOURS
-            ? t('for_last_hours', { count: msToHours(stats.interval) })
-            : t('for_last_days', { count: msToDays(stats.interval) });
+            ? t('for_last_hours', { count: msToHours(currentInterval) })
+            : t('for_last_days', { count: msToDays(currentInterval) });
     };
 
-    const buttonClass = classNames('btn btn-sm dashboard-protection-button', {
+    const protectionButtonClass = classNames('btn btn-sm dashboard-protection-button', {
         'btn-gray': protectionEnabled,
         'btn-success': !protectionEnabled,
     });
@@ -127,6 +137,25 @@ const Dashboard = ({
             </div>
         ));
 
+    const getReportIntervalItems = () => (
+        Object.values(REPORT_INTERVALS_DAYS)
+            .filter((n: any) => n <= stats.interval) // Don't allow report intervals greater than our database interval
+            .map((ms: number, index: number) => (
+                <div
+                    key={`report_intervals_${index}`}
+                    className="dropdown-item"
+                    onClick={() => {
+                        history.replace(`${getDashboardUrlParams(ms)}`);
+                        if (ms !== reportInterval) {
+                            setReportInterval(ms);
+                        }
+                    }}
+                >
+                    {getIntervalText(ms)}
+                </div>
+            ))
+        );
+
     const getRemaningTimeText = (milliseconds: any) => {
         if (!milliseconds) {
             return '';
@@ -145,11 +174,11 @@ const Dashboard = ({
 
     return (
         <>
-            <PageTitle title={t('dashboard')} containerClass="page-title--dashboard">
-                <div className="page-title__protection">
+            <PageTitle title={t('dashboard')} containerClass="page-title--dashboard col-12">
+                <div className="page-title__flex-stretch">
                     <button
                         type="button"
-                        className={buttonClass}
+                        className={protectionButtonClass}
                         onClick={() => {
                             toggleProtection(protectionEnabled);
                         }}
@@ -174,6 +203,24 @@ const Dashboard = ({
                 <button type="button" className="btn btn-outline-primary btn-sm" onClick={getAllStats}>
                     <Trans>refresh_statics</Trans>
                 </button>
+
+                <div className="page-title__flex-stretch ml-auto">
+                    <button
+                        type="button"
+                        className={classNames('btn btn-sm dropdown-button btn-outline-primary')}
+                        disabled={statsProcessing}>
+                        { t('report_interval', { interval_text: getIntervalText(stats.reportInterval) }) }
+                    </button>
+
+                    {!statsProcessing && <Dropdown
+                        label=""
+                        baseClassName="dropdown-primary"
+                        icon="arrow-down"
+                        controlClassName="dropdown-primary__toggle"
+                        menuClassName="dropdown-menu dropdown-menu-arrow">
+                        {getReportIntervalItems()}
+                    </Dropdown>}
+                </div>
             </PageTitle>
 
             {statsProcessing && <Loading />}

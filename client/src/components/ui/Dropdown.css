@@ -62,3 +62,54 @@
 .dropdown-protection.show .nav-icon {
     transform: rotate(180deg);
 }
+
+.dropdown-button {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.dropdown-menu {
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.dropdown-primary {
+    align-self: stretch;
+    width: 26px;
+    display: flex;
+    position: relative;
+    border: 1px solid var(--primary);
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-left: none;
+    cursor: pointer;
+}
+
+.dropdown-primary__toggle {
+    width: 100%;
+    display: block;
+    position: relative;
+    background-color: var(--primary);
+    transition: background-color 0.15s ease-in-out;
+}
+
+.dropdown-primary__toggle:hover {
+    background-color: var(--primary);
+}
+
+.dropdown-primary__toggle .nav-icon {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    color: var(--white);
+    transition: 0.15s ease-in-out transform;
+    transform-origin: center;
+}
+
+.dropdown-primary.show .nav-icon {
+    transform: rotate(180deg);
+}

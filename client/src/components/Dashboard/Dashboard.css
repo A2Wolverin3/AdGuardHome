@@ -1,9 +1,3 @@
-.dashboard-protection-button.btn-gray {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-right-color: #a4a4a4;
-}
-
 .stats__table .popover__body {
     left: -10px;
     min-width: 270px;

@@ -53,6 +53,12 @@ func (s *StatsCtx) handleStats(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	q := r.URL.Query()
+	limit, err := time.ParseDuration(q.Get("limit"))
+	if err != nil {
+		limit = s.limit
+	}
+
 	var (
 		resp *StatsResp
 		ok   bool
@@ -61,7 +67,7 @@ func (s *StatsCtx) handleStats(w http.ResponseWriter, r *http.Request) {
 		s.confMu.RLock()
 		defer s.confMu.RUnlock()
 
-		resp, ok = s.getData(uint32(s.limit.Hours()))
+		resp, ok = s.getData(uint32(limit.Hours()))
 	}()
 
 	s.logger.DebugContext(
@@ -87,7 +93,7 @@ type configResp struct {
 	IntervalDays uint32 `json:"interval"`
 }
 
-// getConfigResp is the response to the GET /control/stats_info.
+// getConfigResp is the response to the GET /control/stats/config.
 type getConfigResp struct {
 	// Ignored is the list of host names, which should not be counted.
 	Ignored []string `json:"ignored"`

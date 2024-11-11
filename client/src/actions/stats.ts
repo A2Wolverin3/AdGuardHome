@@ -1,7 +1,15 @@
 import { createAction } from 'redux-actions';
+import i18next from 'i18next';
 
 import apiClient from '../api/Api';
-import { normalizeTopStats, secondsToMilliseconds, getClientKeysFromActivity, getParamsForClientsSearch, addClientInfo } from '../helpers/helpers';
+import {
+    normalizeTopStats,
+    secondsToMilliseconds,
+    getClientKeysFromActivity,
+    getParamsForClientsSearch,
+    addClientInfo,
+    getIntervalText,
+} from '../helpers/helpers';
 import { addErrorToast, addSuccessToast } from './toasts';
 
 export const getStatsConfigRequest = createAction('GET_STATS_CONFIG_REQUEST');
@@ -39,20 +47,21 @@ export const getStatsRequest = createAction('GET_STATS_REQUEST');
 export const getStatsFailure = createAction('GET_STATS_FAILURE');
 export const getStatsSuccess = createAction('GET_STATS_SUCCESS');
 
-export const getStats = () => async (dispatch: any) => {
+export const getStats = () => async (dispatch: any, getState: () => any) => {
     dispatch(getStatsRequest());
     try {
-        const stats = await apiClient.getStats();
+        const { reportInterval } = getState().stats;
+        const stats = await apiClient.getStats(reportInterval ? { limit: `${reportInterval}ms` } : null);
         const normalizedTopClients = normalizeTopStats(stats.top_clients);
         const activeClientKeys = getClientKeysFromActivity(stats.client_activity, ['id', 'ts']);
         // 'activeClientKeys' is a superset of 'normalizedTopClients'
         // const clientsParams = getParamsForClientsSearch(getClientKeys(normalizedTopClients, 'name'));
-        const clientsParams = getParamsForClientsSearch(activeClientKeys);
+        const clientsParams = getParamsForClientsSearch(Object.keys(activeClientKeys));
         const clients = await apiClient.findClients(clientsParams);
         const topClientsWithInfo = addClientInfo(normalizedTopClients, clients, 'name');
 
         const clientNames = {};
-        activeClientKeys.forEach((key) => {
+        Object.keys(activeClientKeys).forEach((key: string) => {
             const client = clients.find((item) => item[key]) || '';
             const info = client?.[key] ?? '';
             clientNames[key] = info.name ?? '';
@@ -93,5 +102,25 @@ export const resetStats = () => async (dispatch: any) => {
     } catch (error) {
         dispatch(addErrorToast({ error }));
         dispatch(resetStatsFailure());
+    }
+};
+
+export const setReportIntervalRequest = createAction('SET_REPORT_INTERVAL_REQUEST');
+export const setReportIntervalFailure = createAction('SET_REPORT_INTERVAL_FAILURE');
+export const setReportIntervalSuccess = createAction('SET_REPORT_INTERVAL_SUCCESS');
+
+export const setReportInterval = (updatedReportInterval: number, showToast: boolean = true) => async (dispatch: any) => {
+    dispatch(setReportIntervalRequest());
+    try {
+        const successMessage = i18next.t('report_interval_set', { interval_text: getIntervalText(updatedReportInterval) });
+        if (showToast) {
+            dispatch(addSuccessToast(successMessage));
+        }
+        dispatch(setReportIntervalSuccess({ reportInterval: updatedReportInterval }));
+    } catch (error) {
+        if (showToast) {
+            dispatch(addErrorToast({ error }));
+        }
+        dispatch(setReportIntervalFailure());
     }
 };
