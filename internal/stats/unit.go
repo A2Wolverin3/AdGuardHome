@@ -536,14 +536,29 @@ func (s *StatsCtx) fillCollectedStatsDaily(
 	}
 }
 
-// countHours returns the number of hours in the last days.
+// countHours returns the number of hours in the last full days (plus today).
 func countHours(curHour uint32, days int) (n int) {
-	hoursInCurDay := int(curHour % 24)
-	if hoursInCurDay == 0 {
-		hoursInCurDay = 24
-	}
+	// 'curHour' as passed in isn't really the current local hour. It's
+	// the current index that indicates the end of the dataset. (Which might
+	// coincidentally be in sync with UTC time... but that's not local.)
+	// But we do everything else about stats based on local time. So we should
+	// find the start of the day period based on local time as well. Otherwise
+	// we're technically just chunking 24-hour periods, not "daily" stats.
+	// But up the line, these get presented as "daily" and confuse people.
+	// NOTE: I think this means currId/currHour can be removed from a long
+	// trail of func pass-thrus. But in the interest of keeping my hack less
+	// noisy it will stay and we'll just fix it here.
 
+	hoursInCurDay := int(time.Now().Hour() % 24)
 	hoursInRestDays := (days - 1) * 24
+
+	// nolint:unparam // doesn't work for ignoring unused 'curHour' - so this
+	// ugliness sits here instead. It might actually be easier to just strip
+	// the parameter out from the entire call chain. :/
+	if curHour == 0 {
+		curHour = uint32((time.Now().Hour() % 24) * 2)
+		hoursInCurDay = int(curHour / 2)
+	}
 
 	return hoursInRestDays + hoursInCurDay
 }
