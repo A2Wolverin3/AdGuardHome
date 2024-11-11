@@ -68,7 +68,7 @@ const config = {
             },
             {
                 test: /\.tsx?$/,
-                exclude: /node_modules/,
+                exclude: /node_modules\/(?!(@react-spring)\/).*/,
                 use: {
                     loader: 'ts-loader',
                 },

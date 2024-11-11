@@ -1,0 +1,19 @@
+.bar__tooltip {
+    padding: 2px 10px 7px;
+    line-height: 1.1;
+    color: var(--white);
+    background-color: var(--gray-3);
+    border-radius: 4px;
+    opacity: 90%;
+}
+
+.bar__tooltip-text {
+    font-size: 0.7rem;
+}
+
+.card-barchart-bg {
+    height: 20rem;
+    position: relative;
+    z-index: 1;
+    color: var(--black);
+}

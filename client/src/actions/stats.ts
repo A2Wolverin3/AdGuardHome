@@ -1,7 +1,7 @@
 import { createAction } from 'redux-actions';
 
 import apiClient from '../api/Api';
-import { normalizeTopStats, secondsToMilliseconds, getParamsForClientsSearch, addClientInfo } from '../helpers/helpers';
+import { normalizeTopStats, secondsToMilliseconds, getClientKeysFromActivity, getParamsForClientsSearch, addClientInfo } from '../helpers/helpers';
 import { addErrorToast, addSuccessToast } from './toasts';
 
 export const getStatsConfigRequest = createAction('GET_STATS_CONFIG_REQUEST');
@@ -44,10 +44,19 @@ export const getStats = () => async (dispatch: any) => {
     try {
         const stats = await apiClient.getStats();
         const normalizedTopClients = normalizeTopStats(stats.top_clients);
-
-        const clientsParams = getParamsForClientsSearch(normalizedTopClients, 'name');
+        const activeClientKeys = getClientKeysFromActivity(stats.client_activity, ['id', 'ts']);
+        // 'activeClientKeys' is a superset of 'normalizedTopClients'
+        // const clientsParams = getParamsForClientsSearch(getClientKeys(normalizedTopClients, 'name'));
+        const clientsParams = getParamsForClientsSearch(activeClientKeys);
         const clients = await apiClient.findClients(clientsParams);
         const topClientsWithInfo = addClientInfo(normalizedTopClients, clients, 'name');
+
+        const clientNames = {};
+        activeClientKeys.forEach((key) => {
+            const client = clients.find((item) => item[key]) || '';
+            const info = client?.[key] ?? '';
+            clientNames[key] = info.name ?? '';
+        });
 
         const normalizedStats = {
             ...stats,
@@ -57,6 +66,11 @@ export const getStats = () => async (dispatch: any) => {
             avg_processing_time: secondsToMilliseconds(stats.avg_processing_time),
             top_upstreams_responses: normalizeTopStats(stats.top_upstreams_responses),
             top_upstrems_avg_time: normalizeTopStats(stats.top_upstreams_avg_time),
+            // 'clients' contains 'info' for all active clients now, but that's a lot
+            // of information. The individual 'info' objects needed for 'top_clients'
+            // are already attached to that set of stats. We only need to preserve
+            // name mappings for the full client activity report.
+            active_client_info: { activeKeys: activeClientKeys, mappedNames: clientNames },
         };
 
         dispatch(getStatsSuccess(normalizedStats));

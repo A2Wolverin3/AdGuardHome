@@ -1867,6 +1867,10 @@
           'type': 'array'
           'items':
             'type': 'integer'
+        'client_activity':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/TopArrayEntry'
     'TopArrayEntry':
       'type': 'object'
       'description': >

@@ -210,6 +210,8 @@ export type StatsData = {
     numReplacedSafesearch: number;
     avgProcessingTime: number;
     timeUnits: string;
+    clientActivity: any[];
+    activeClientInfo: any;
     enabled: boolean;
     topUpstreamsAvgTime: { name: string; count: number }[];
     topUpstreamsResponses: { name: string; count: number }[];
@@ -609,6 +611,8 @@ export const initialState: RootState = {
         numReplacedSafesearch: 0,
         avgProcessingTime: 0,
         timeUnits: TIME_UNITS.HOURS,
+        clientActivity: [],
+        activeClientInfo: {},
         enabled: true,
         topUpstreamsAvgTime: [],
         topUpstreamsResponses: [],

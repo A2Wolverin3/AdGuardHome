@@ -120,6 +120,7 @@
     "stats_malware_phishing": "Blocked malware/phishing",
     "stats_adult": "Blocked adult websites",
     "stats_query_domain": "Top queried domains",
+    "stats_client_activity": "Client activity",
     "for_last_hours": "for the last {{count}} hour",
     "for_last_hours_plural": "for the last {{count}} hours",
     "for_last_days": "for the last {{count}} day",

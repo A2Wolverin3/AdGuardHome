@@ -1,16 +1,7 @@
 import React from 'react';
 import { ResponsiveLine } from '@nivo/line';
-import addDays from 'date-fns/add_days';
-import subDays from 'date-fns/sub_days';
-import subHours from 'date-fns/sub_hours';
-import dateFormat from 'date-fns/format';
 import round from 'lodash/round';
-import { useSelector } from 'react-redux';
 import './Line.css';
-
-import { msToDays, msToHours } from '../../helpers/helpers';
-import { TIME_UNITS } from '../../helpers/constants';
-import { RootState } from '../../initialState';
 
 interface LineProps {
     data: any[];
@@ -47,9 +38,9 @@ const Line = ({ data, color = 'black', formatX = (x) => String(x), formatY = (y)
             crosshairType="x"
             axisLeft={null}
             axisBottom={null}
-            enableGridX={null}
-            enableGridY={null}
-            enablePoints={null}
+            enableGridX={false}
+            enableGridY={false}
+            enablePoints={false}
             xFormat={formatX}
             yFormat={formatY}
             sliceTooltip={(slice) => {

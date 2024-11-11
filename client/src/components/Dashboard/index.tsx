@@ -7,6 +7,7 @@ import classNames from 'classnames';
 import Statistics from './Statistics';
 import Counters from './Counters';
 import Clients from './Clients';
+import ClientActivity from './ClientActivity';
 import QueriedDomains from './QueriedDomains';
 import BlockedDomains from './BlockedDomains';
 import { DISABLE_PROTECTION_TIMINGS, ONE_SECOND_IN_MS, SETTINGS_URLS, TIME_UNITS } from '../../helpers/constants';
@@ -202,6 +203,15 @@ const Dashboard = ({
                             numBlockedFiltering={stats.numBlockedFiltering}
                             numReplacedSafebrowsing={stats.numReplacedSafebrowsing}
                             numReplacedParental={stats.numReplacedParental}
+                            refreshButton={refreshButton}
+                        />
+                    </div>
+
+                    <div className="col-lg-12">
+                        <ClientActivity
+                            subtitle={subtitle}
+                            clientActivity={stats.clientActivity}
+                            clientInfo={stats.activeClientInfo}
                             refreshButton={refreshButton}
                         />
                     </div>
