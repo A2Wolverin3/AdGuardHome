@@ -43,6 +43,9 @@ type clientJSON struct {
 
 	Name string `json:"name"`
 
+	IsClientProfile   bool   `json:"is_client_profile"`
+	ClientProfileName string `json:"client_profile_name"`
+
 	// BlockedServices is the names of blocked services.
 	BlockedServices []string `json:"blocked_services"`
 	IDs             []string `json:"ids"`
@@ -194,15 +197,19 @@ func (clients *clientsContainer) jsonToClient(
 		return nil, err
 	}
 
-	err = c.SetIDs(cj.IDs)
-	if err != nil {
-		// Don't wrap the error since it's informative enough as is.
-		return nil, err
+	if !cj.IsClientProfile {
+		err = c.SetIDs(cj.IDs)
+		if err != nil {
+			// Don't wrap the error since it's informative enough as is.
+			return nil, err
+		}
 	}
 
 	c.SafeSearchConf = copySafeSearch(cj.SafeSearchConf, cj.SafeSearchEnabled)
 	c.Name = cj.Name
 	c.Tags = cj.Tags
+	c.IsClientProfile = cj.IsClientProfile
+	c.ClientProfileName = cj.ClientProfileName
 	c.Upstreams = cj.Upstreams
 	c.UseOwnSettings = !cj.UseGlobalSettings
 	c.FilteringEnabled = cj.FilteringEnabled
@@ -210,7 +217,11 @@ func (clients *clientsContainer) jsonToClient(
 	c.SafeBrowsingEnabled = cj.SafeBrowsingEnabled
 	c.UseOwnBlockedServices = !cj.UseGlobalBlockedServices
 
-	if c.SafeSearchConf.Enabled {
+	// Profiles and Clients without profiles will SetSafeSearch according to configuration
+	// Clients that use profiles will ultimately use their profile's SafeSearch settings,
+	//	and need not set anything up here.
+	ssEnabled := (c.IsClientProfile || c.ClientProfileName == "") && c.SafeSearchConf.Enabled
+	if ssEnabled {
 		logger := clients.baseLogger.With(
 			slogutil.KeyPrefix, safesearch.LogPrefix,
 			safesearch.LogKeyClient, c.Name,
@@ -302,6 +313,8 @@ func clientToJSON(c *client.Persistent) (cj *clientJSON) {
 		Name:                c.Name,
 		IDs:                 c.IDs(),
 		Tags:                c.Tags,
+		IsClientProfile:     c.IsClientProfile,
+		ClientProfileName:   c.ClientProfileName,
 		UseGlobalSettings:   !c.UseOwnSettings,
 		FilteringEnabled:    c.FilteringEnabled,
 		ParentalEnabled:     c.ParentalEnabled,

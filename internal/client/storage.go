@@ -174,12 +174,15 @@ func NewStorage(ctx context.Context, conf *StorageConfig) (s *Storage, err error
 	}
 
 	for i, p := range conf.InitialClients {
-		err = s.Add(ctx, p)
+		err = s.AddAndVerify(ctx, p, false)
 		if err != nil {
 			return nil, fmt.Errorf("adding client %q at index %d: %w", p.Name, i, err)
 		}
 	}
-
+	err = s.validateClientProfiles(nil) // no updates
+	if err != nil {
+		return nil, fmt.Errorf("initial client profiles incorrect: %w", err)
+	}
 	s.ReloadARP(ctx)
 
 	return s, nil
@@ -393,6 +396,10 @@ func (s *Storage) setWHOISInfo(ctx context.Context, ip netip.Addr, wi *whois.Inf
 
 // Add stores persistent client information or returns an error.
 func (s *Storage) Add(ctx context.Context, p *Persistent) (err error) {
+	return s.AddAndVerify(ctx, p, true)
+}
+
+func (s *Storage) AddAndVerify(ctx context.Context, p *Persistent, verifyProfiles bool) (err error) {
 	defer func() { err = errors.Annotate(err, "adding client: %w") }()
 
 	err = p.validate(ctx, s.logger, s.allowedTags)
@@ -414,6 +421,17 @@ func (s *Storage) Add(ctx context.Context, p *Persistent) (err error) {
 	if err != nil {
 		// Don't wrap the error since there is already an annotation deferred.
 		return err
+	}
+
+	// Verify the update doesn't mess up client settings profiles
+	// Call while holding s.mu.Lock
+	if verifyProfiles {
+		updates := map[string]*Persistent{p.Name: p}
+		err = s.validateClientProfiles(updates)
+		if err != nil {
+			// Don't wrap the error since there is already an annotation deferred.
+			return err
+		}
 	}
 
 	s.index.add(p)
@@ -519,6 +537,14 @@ func (s *Storage) RemoveByName(name string) (ok bool) {
 		log.Error("client storage: removing client %q: %s", p.Name, err)
 	}
 
+	// Verify the update doesn't mess up client settings profiles
+	// Call while holding s.mu.Lock
+	updates := map[string]*Persistent{name: nil}
+	err := s.validateClientProfiles(updates)
+	if err != nil {
+		return false
+	}
+
 	s.index.remove(p)
 
 	return true
@@ -537,6 +563,15 @@ func (s *Storage) Update(ctx context.Context, name string, p *Persistent) (err e
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Verify the update doesn't mess up client settings profiles
+	// Call while holding s.mu.Lock
+	updates := map[string]*Persistent{name: p}
+	err = s.validateClientProfiles(updates)
+	if err != nil {
+		// Don't wrap the error since there is already an annotation deferred.
+		return err
+	}
 
 	stored, ok := s.index.findByName(name)
 	if !ok {
@@ -567,6 +602,66 @@ func (s *Storage) RangeByName(f func(c *Persistent) (cont bool)) {
 	defer s.mu.Unlock()
 
 	s.index.rangeByName(f)
+}
+
+// validateClientProfiles will examine all stored clients - allowing for
+// proposed updates described by the 'updates' parameter - to verify that all
+// clients that specify a ClientProfile point to a valid profile.
+// This should be done under lock, so all callers should ensure they have
+// exclusive access to 's' before calling.
+func (s *Storage) validateClientProfiles(updates map[string]*Persistent) error {
+	// No updates is a valid scenario. But at least use an empty map to make
+	// the logic here easier.
+	if updates == nil {
+		updates = make(map[string]*Persistent)
+	}
+
+	// To make life easier, let's just build a representation of what the updated client
+	// list would look like. Might as well filter out a list of profile names while
+	// we're at it.
+	clientList, pnames := s.createUpdatedClientList(updates)
+
+	// Verify each client has a valid profile name setting
+	for _, cli := range clientList {
+		if !cli.IsClientProfile && len(cli.ClientProfileName) > 0 {
+			if !slices.Contains(pnames, cli.ClientProfileName) {
+				return fmt.Errorf("client %q has invalid profile name %q", cli.Name, cli.ClientProfileName)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Storage) createUpdatedClientList(updates map[string]*Persistent) (clientList map[string]*Persistent, profileNames []string) {
+	clientList = map[string]*Persistent{}
+	profileNames = []string{}
+	s.index.rangeByName(func(c *Persistent) (cont bool) {
+		uc, exists := updates[c.Name]
+		if exists {
+			if uc != nil {
+				addUpdatedClient(uc, &clientList, &profileNames)
+			}
+		} else {
+			addUpdatedClient(c, &clientList, &profileNames)
+		}
+		return true
+	})
+	// Add any 'updates' that didn't match storage
+	for uname, uc := range updates {
+		_, exists := clientList[uname]
+		if !exists && uc != nil {
+			addUpdatedClient(uc, &clientList, &profileNames)
+		}
+	}
+	return
+}
+
+func addUpdatedClient(c *Persistent, clientList *map[string]*Persistent, profileNames *[]string) {
+	(*clientList)[c.Name] = c
+	if c.IsClientProfile {
+		(*profileNames) = append((*profileNames), c.Name)
+	}
 }
 
 // Size returns the number of persistent clients.

@@ -79,7 +79,7 @@ const validate = (values: any): FormErrors<any, string> => {
     return errors;
 };
 
-const renderFieldsWrapper = (placeholder: any, buttonTitle: any) =>
+const renderFieldsWrapper = (placeholder: any, buttonTitle: any, disabled: boolean) =>
     function cell(row: any) {
         const { fields } = row;
         return (
@@ -95,6 +95,7 @@ const renderFieldsWrapper = (placeholder: any, buttonTitle: any) =>
                             isActionAvailable={index !== 0}
                             removeField={() => fields.remove(index)}
                             normalizeOnBlur={(data: any) => data.trim()}
+                            disabled={disabled}
                         />
                     </div>
                 ))}
@@ -103,6 +104,7 @@ const renderFieldsWrapper = (placeholder: any, buttonTitle: any) =>
                     type="button"
                     className="btn btn-link btn-block btn-sm"
                     onClick={() => fields.push()}
+                    disabled={disabled}
                     title={buttonTitle}>
                     <svg className="icon icon--24">
                         <use xlinkHref="#plus" />
@@ -113,7 +115,7 @@ const renderFieldsWrapper = (placeholder: any, buttonTitle: any) =>
     };
 
 // Should create function outside of component to prevent component re-renders
-const renderFields = renderFieldsWrapper(i18n.t('form_enter_id'), i18n.t('form_add_id'));
+const renderFields = (disabled: boolean) => renderFieldsWrapper(i18n.t('form_enter_id'), i18n.t('form_add_id'), disabled);
 
 interface renderMultiselectProps {
     input: {
@@ -152,6 +154,8 @@ interface FormProps {
     change: (...args: unknown[]) => unknown;
     submitting: boolean;
     handleClose: (...args: unknown[]) => unknown;
+    isClientProfile?: boolean;
+    hasClientProfile?: boolean;
     useGlobalSettings?: boolean;
     useGlobalServices?: boolean;
     blockedServicesSchedule?: {
@@ -174,6 +178,8 @@ let Form = (props: FormProps) => {
         reset,
         change,
         submitting,
+        isClientProfile,
+        hasClientProfile,
         useGlobalSettings,
         useGlobalServices,
         blockedServicesSchedule,
@@ -210,7 +216,7 @@ let Form = (props: FormProps) => {
                                 type="checkbox"
                                 component={CheckboxField}
                                 placeholder={t(setting.placeholder)}
-                                disabled={setting.name !== 'use_global_settings' ? useGlobalSettings : false}
+                                disabled={hasClientProfile || (setting.name !== 'use_global_settings' ? useGlobalSettings : false)}
                             />
                         </div>
                     ))}
@@ -221,7 +227,7 @@ let Form = (props: FormProps) => {
                             type="checkbox"
                             component={CheckboxField}
                             placeholder={t('enforce_safe_search')}
-                            disabled={useGlobalSettings}
+                            disabled={hasClientProfile || useGlobalSettings}
                         />
                     </div>
 
@@ -233,7 +239,7 @@ let Form = (props: FormProps) => {
                                     type="checkbox"
                                     component={CheckboxField}
                                     placeholder={captitalizeWords(searchKey)}
-                                    disabled={useGlobalSettings}
+                                    disabled={hasClientProfile || useGlobalSettings}
                                 />
                             </div>
                         ))}
@@ -249,6 +255,7 @@ let Form = (props: FormProps) => {
                                 type="checkbox"
                                 component={CheckboxField}
                                 placeholder={t(setting.placeholder)}
+                                disabled={hasClientProfile}
                             />
                         </div>
                     ))}
@@ -267,6 +274,7 @@ let Form = (props: FormProps) => {
                             component={renderServiceField}
                             placeholder={t('blocked_services_global')}
                             modifier="service--global"
+                            disabled={hasClientProfile}
                         />
 
                         <div className="row mb-4">
@@ -274,7 +282,7 @@ let Form = (props: FormProps) => {
                                 <button
                                     type="button"
                                     className="btn btn-secondary btn-block"
-                                    disabled={useGlobalServices}
+                                    disabled={hasClientProfile || useGlobalServices}
                                     onClick={() => toggleAllServices(services.allServices, change, true)}>
                                     <Trans>block_all</Trans>
                                 </button>
@@ -284,7 +292,7 @@ let Form = (props: FormProps) => {
                                 <button
                                     type="button"
                                     className="btn btn-secondary btn-block"
-                                    disabled={useGlobalServices}
+                                    disabled={hasClientProfile || useGlobalServices}
                                     onClick={() => toggleAllServices(services.allServices, change, false)}>
                                     <Trans>unblock_all</Trans>
                                 </button>
@@ -300,7 +308,7 @@ let Form = (props: FormProps) => {
                                         type="checkbox"
                                         component={renderServiceField}
                                         placeholder={service.name}
-                                        disabled={useGlobalServices}
+                                        disabled={hasClientProfile || useGlobalServices}
                                     />
                                 ))}
                             </div>
@@ -349,6 +357,7 @@ let Form = (props: FormProps) => {
                         className="form-control form-control--textarea mb-5"
                         placeholder={t('upstream_dns')}
                         normalizeOnBlur={trimLinesAndRemoveEmpty}
+                        disabled={hasClientProfile}
                     />
 
                     <Examples />
@@ -361,6 +370,7 @@ let Form = (props: FormProps) => {
                             type="checkbox"
                             component={CheckboxField}
                             placeholder={t('enable_upstream_dns_cache')}
+                            disabled={hasClientProfile}
                         />
                     </div>
 
@@ -378,6 +388,7 @@ let Form = (props: FormProps) => {
                             normalize={toNumber}
                             min={0}
                             max={UINT32_RANGE.MAX}
+                            disabled={hasClientProfile}
                         />
                     </div>
                 </div>
@@ -436,6 +447,48 @@ let Form = (props: FormProps) => {
                     <div className="form__group">
                         <div className="form__label">
                             <strong className="mr-3">
+                                <Trans>client_profile</Trans>
+                            </strong>
+                        </div>
+
+                        <div className="form__desc mt-0 mr-3 mb-3">
+                            <Trans>client_profile_desc</Trans>
+                        </div>
+
+                        <div className="row mt-0 mb-4">
+                            <div className="col-auto border-right">
+                                <Field
+                                    name="is_client_profile"
+                                    type="checkbox"
+                                    component={CheckboxField}
+                                    placeholder={t('client_profile_enable')}
+                                />
+                            </div>
+
+                            <div className="col-auto border-left">
+                                <label htmlFor="profileName">
+                                    <Trans>client_profile_name_label</Trans>
+                                </label>
+                            </div>
+
+                            <div className="col">
+                                <Field
+                                    id="profileName"
+                                    name="client_profile_name"
+                                    component={renderInputField}
+                                    type="text"
+                                    className="form-control"
+                                    placeholder={t('client_profile_name')}
+                                    normalizeOnBlur={(data: any) => data.trim()}
+                                    disabled={isClientProfile}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="form__group">
+                        <div className="form__label">
+                            <strong className="mr-3">
                                 <Trans>client_identifier</Trans>
                             </strong>
                         </div>
@@ -453,17 +506,21 @@ let Form = (props: FormProps) => {
                     </div>
 
                     <div className="form__group">
-                        <FieldArray name="ids" component={renderFields} />
+                        <FieldArray name="ids" component={renderFields(isClientProfile)} />
                     </div>
                 </div>
 
-                <Tabs
+                {hasClientProfile && <div className="border border-warning p-3">
+                    <Trans>client_profile_warning</Trans>
+                </div>}
+
+                {!hasClientProfile && <Tabs
                     controlClass="form"
                     tabs={tabs}
                     activeTabLabel={activeTabLabel}
                     setActiveTabLabel={setActiveTabLabel}>
                     {activeTab}
-                </Tabs>
+                </Tabs>}
             </div>
 
             <div className="modal-footer">
@@ -496,10 +553,15 @@ const selector = formValueSelector(FORM_NAME.CLIENT);
 Form = connect((state) => {
     const useGlobalSettings = selector(state, 'use_global_settings');
     const useGlobalServices = selector(state, 'use_global_blocked_services');
+    const isClientProfile = selector(state, 'is_client_profile');
+    const clientProfileName = selector(state, 'client_profile_name');
+    const hasClientProfile = !(!clientProfileName);
     const blockedServicesSchedule = selector(state, 'blocked_services_schedule');
     return {
         useGlobalSettings,
         useGlobalServices,
+        isClientProfile,
+        hasClientProfile,
         blockedServicesSchedule,
     };
 })(Form);

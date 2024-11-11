@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/AdguardTeam/AdGuardHome/internal/aghalg"
@@ -419,8 +420,27 @@ func applyAdditionalFiltering(clientIP netip.Addr, clientID string, setts *filte
 			return
 		}
 	}
+	log.Debug("%s: found settings for client %q (%s; %q)", pref, c.Name, clientIP, clientID)
 
-	log.Debug("%s: using settings for client %q (%s; %q)", pref, c.Name, clientIP, clientID)
+	setts.ClientName = c.Name
+	setts.ClientTags = c.Tags
+
+	// If the client uses a client settings profile, then look that up
+	if len(c.ClientProfileName) > 0 {
+		prof, foundProf := Context.clients.storage.FindByName(c.ClientProfileName)
+		if foundProf {
+			log.Debug("%s: using settings profile '%q' for client %q (%s; %q)", pref, prof.Name, c.Name, clientIP, clientID)
+
+			// Tags from each client are still good. So are tags on the profile. Merge them.
+			setts.ClientTags = mergeUnique(c.Tags, prof.Tags)
+			slices.Sort(setts.ClientTags)
+
+			// The rest of the settings should come just from the profile. To avoid duplicate
+			// logic, just swap the client for the profile. Only their properties are used
+			// after here, so the object being referenced doesn't matter.
+			c = prof
+		}
+	}
 
 	if c.UseOwnBlockedServices {
 		// TODO(e.burkov):  Get rid of this crutch.
@@ -428,12 +448,10 @@ func applyAdditionalFiltering(clientIP netip.Addr, clientID string, setts *filte
 		svcs := c.BlockedServices.IDs
 		if !c.BlockedServices.Schedule.Contains(time.Now()) {
 			Context.filters.ApplyBlockedServicesList(setts, svcs)
-			log.Debug("%s: services for client %q set: %s", pref, c.Name, svcs)
+			log.Debug("%s: services for client %q set: %s", pref, setts.ClientName, svcs)
 		}
 	}
 
-	setts.ClientName = c.Name
-	setts.ClientTags = c.Tags
 	if !c.UseOwnSettings {
 		return
 	}
@@ -580,4 +598,28 @@ func checkDir(path string) (err error) {
 	}
 
 	return nil
+}
+
+func mergeUnique(slice1, slice2 []string) []string {
+	// Create a map to track unique elements
+	uniqueElements := make(map[string]bool)
+	mergedSlice := []string{}
+
+	// Add elements from the first slice
+	for _, item := range slice1 {
+		if !uniqueElements[item] {
+			uniqueElements[item] = true
+			mergedSlice = append(mergedSlice, item)
+		}
+	}
+
+	// Add elements from the second slice
+	for _, item := range slice2 {
+		if !uniqueElements[item] {
+			uniqueElements[item] = true
+			mergedSlice = append(mergedSlice, item)
+		}
+	}
+
+	return mergedSlice
 }

@@ -565,6 +565,8 @@ func TestStorage_Add(t *testing.T) {
 		existingName     = "existing_name"
 		existingClientID = "existing_client_id"
 
+		profileName = "test_profile"
+
 		allowedTag    = "user_admin"
 		notAllowedTag = "not_allowed_tag"
 	)
@@ -583,6 +585,13 @@ func TestStorage_Add(t *testing.T) {
 		UID:       existingClientUID,
 	}
 
+	existingProfile := &client.Persistent{
+		Name:            profileName,
+		IsClientProfile: true,
+		IPs:             []netip.Addr{},
+		UID:             client.MustNewUID(),
+	}
+
 	ctx := testutil.ContextWithTimeout(t, testTimeout)
 	s := newTestStorage(t)
 	tags := s.AllowedTags()
@@ -596,6 +605,9 @@ func TestStorage_Add(t *testing.T) {
 	require.False(t, ok)
 
 	err := s.Add(ctx, existingClient)
+	require.NoError(t, err)
+
+	err = s.Add(ctx, existingProfile)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -692,6 +704,58 @@ func TestStorage_Add(t *testing.T) {
 			IPs:  []netip.Addr{netip.MustParseAddr("7.7.7.7")},
 		},
 		wantErrMsg: "adding client: uid required",
+	}, {
+		name: "is_profile",
+		cli: &client.Persistent{
+			Name:            "is_profile",
+			IsClientProfile: true,
+			Tags:            []string{"device_audio"},
+			IPs:             []netip.Addr{netip.MustParseAddr("8.8.8.1")}, // Makes no sense, but causes no error
+			UID:             client.MustNewUID(),
+		},
+		wantErrMsg: "",
+	}, {
+		name: "has_profile",
+		cli: &client.Persistent{
+			Name:              "has_profile",
+			IsClientProfile:   false,
+			ClientProfileName: profileName,
+			Tags:              []string{"os_other"},
+			IPs:               []netip.Addr{netip.MustParseAddr("8.8.8.2")},
+			UID:               client.MustNewUID(),
+		},
+		wantErrMsg: "",
+	}, {
+		name: "has_and_is_profile",
+		cli: &client.Persistent{
+			Name:              "has_and_is_profile",
+			IsClientProfile:   true,
+			ClientProfileName: profileName,
+			Tags:              []string{"device_pc"},
+			IPs:               []netip.Addr{netip.MustParseAddr("8.8.8.3")},
+			UID:               client.MustNewUID(),
+		},
+		wantErrMsg: "adding client: profiles cannot reference other profiles",
+	}, {
+		name: "non_exist_profile",
+		cli: &client.Persistent{
+			Name:              "non_exist_profile",
+			IsClientProfile:   false,
+			ClientProfileName: "profile_not_found",
+			IPs:               []netip.Addr{netip.MustParseAddr("8.8.8.4")},
+			UID:               client.MustNewUID(),
+		},
+		wantErrMsg: "adding client: client \"non_exist_profile\" has invalid profile name \"profile_not_found\"",
+	}, {
+		name: "non_profile_profile",
+		cli: &client.Persistent{
+			Name:              "non_profile_profile",
+			IsClientProfile:   false,
+			ClientProfileName: existingName,
+			IPs:               []netip.Addr{netip.MustParseAddr("8.8.8.5")},
+			UID:               client.MustNewUID(),
+		},
+		wantErrMsg: "adding client: client \"non_profile_profile\" has invalid profile name \"existing_name\"",
 	}}
 
 	for _, tc := range testCases {
@@ -705,7 +769,9 @@ func TestStorage_Add(t *testing.T) {
 
 func TestStorage_RemoveByName(t *testing.T) {
 	const (
-		existingName = "existing_name"
+		existingName    = "existing_name"
+		profileName     = "test_profile"
+		usesProfileName = "uses_profile"
 	)
 
 	existingClient := &client.Persistent{
@@ -714,9 +780,28 @@ func TestStorage_RemoveByName(t *testing.T) {
 		UID:  client.MustNewUID(),
 	}
 
+	existingProfile := &client.Persistent{
+		Name:            profileName,
+		IsClientProfile: true,
+		UID:             client.MustNewUID(),
+	}
+	usesProfileClient := &client.Persistent{
+		Name:              usesProfileName,
+		ClientProfileName: profileName,
+		IPs:               []netip.Addr{netip.MustParseAddr("1.2.3.6")},
+		UID:               client.MustNewUID(),
+	}
+
 	ctx := testutil.ContextWithTimeout(t, testTimeout)
 	s := newTestStorage(t)
+
 	err := s.Add(ctx, existingClient)
+	require.NoError(t, err)
+
+	err = s.Add(ctx, existingProfile)
+	require.NoError(t, err)
+
+	err = s.Add(ctx, usesProfileClient)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -731,6 +816,18 @@ func TestStorage_RemoveByName(t *testing.T) {
 		name:    "non_existing_client",
 		cliName: "non_existing_client",
 		want:    assert.False,
+	}, {
+		name:    "used_profile",
+		cliName: profileName,
+		want:    assert.False,
+	}, {
+		name:    "client_with_profile",
+		cliName: usesProfileName,
+		want:    assert.True,
+	}, {
+		name:    "free_profile",
+		cliName: profileName,
+		want:    assert.True,
 	}}
 
 	for _, tc := range testCases {

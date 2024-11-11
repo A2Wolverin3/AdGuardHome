@@ -47,6 +47,7 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 	Context.clients.storage = newStorage(t, []*client.Persistent{{
 		Name:                "default",
 		ClientIDs:           []string{"default"},
+		Tags:                []string{"user_regular", "os_other"},
 		UseOwnSettings:      false,
 		SafeSearchConf:      filtering.SafeSearchConfig{Enabled: false},
 		FilteringEnabled:    false,
@@ -68,6 +69,26 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 		FilteringEnabled:    true,
 		SafeBrowsingEnabled: false,
 		ParentalEnabled:     false,
+	}, {
+		Name:                "test_profile",
+		Tags:                []string{"user_regular", "os_other"},
+		IsClientProfile:     true,
+		ClientIDs:           []string{},
+		UseOwnSettings:      true,
+		SafeSearchConf:      filtering.SafeSearchConfig{Enabled: true},
+		FilteringEnabled:    true,
+		SafeBrowsingEnabled: true,
+		ParentalEnabled:     true,
+	}, {
+		Name:                "uses_profile",
+		ClientProfileName:   "test_profile",
+		Tags:                []string{"user_admin", "os_other", "device_nas"},
+		ClientIDs:           []string{"uses_profile"},
+		UseOwnSettings:      false,
+		SafeSearchConf:      filtering.SafeSearchConfig{Enabled: false},
+		FilteringEnabled:    false,
+		SafeBrowsingEnabled: false,
+		ParentalEnabled:     false,
 	}})
 
 	testCases := []struct {
@@ -77,6 +98,7 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 		SafeSearchEnabled   assert.BoolAssertionFunc
 		SafeBrowsingEnabled assert.BoolAssertionFunc
 		ParentalEnabled     assert.BoolAssertionFunc
+		Tags                []string
 	}{{
 		name:                "global_settings",
 		id:                  "default",
@@ -84,6 +106,7 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 		SafeSearchEnabled:   assert.False,
 		SafeBrowsingEnabled: assert.False,
 		ParentalEnabled:     assert.False,
+		Tags:                []string{"os_other", "user_regular"},
 	}, {
 		name:                "custom_settings",
 		id:                  "custom_filtering",
@@ -91,6 +114,7 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 		SafeSearchEnabled:   assert.True,
 		SafeBrowsingEnabled: assert.True,
 		ParentalEnabled:     assert.True,
+		Tags:                []string{},
 	}, {
 		name:                "partial",
 		id:                  "partial_custom_filtering",
@@ -98,6 +122,15 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 		SafeSearchEnabled:   assert.True,
 		SafeBrowsingEnabled: assert.False,
 		ParentalEnabled:     assert.False,
+		Tags:                []string{},
+	}, {
+		name:                "client_profile",
+		id:                  "uses_profile",
+		FilteringEnabled:    assert.True,
+		SafeSearchEnabled:   assert.True,
+		SafeBrowsingEnabled: assert.True,
+		ParentalEnabled:     assert.True,
+		Tags:                []string{"device_nas", "os_other", "user_admin", "user_regular"},
 	}}
 
 	for _, tc := range testCases {
@@ -109,6 +142,11 @@ func TestApplyAdditionalFiltering(t *testing.T) {
 			tc.SafeSearchEnabled(t, setts.SafeSearchEnabled)
 			tc.SafeBrowsingEnabled(t, setts.SafeBrowsingEnabled)
 			tc.ParentalEnabled(t, setts.ParentalEnabled)
+
+			assert.Equal(t, len(tc.Tags), len(setts.ClientTags))
+			for i, tag := range tc.Tags {
+				assert.Equal(t, tag, setts.ClientTags[i])
+			}
 		})
 	}
 }
@@ -118,6 +156,7 @@ func TestApplyAdditionalFiltering_blockedServices(t *testing.T) {
 
 	var (
 		globalBlockedServices  = []string{"ok"}
+		profileBlockedServices = []string{"4chan", "9gag"}
 		clientBlockedServices  = []string{"ok", "mail_ru", "vk"}
 		invalidBlockedServices = []string{"invalid"}
 
@@ -167,6 +206,24 @@ func TestApplyAdditionalFiltering_blockedServices(t *testing.T) {
 			IDs:      clientBlockedServices,
 		},
 		UseOwnBlockedServices: true,
+	}, {
+		Name:            "test_profile",
+		IsClientProfile: true,
+		ClientIDs:       []string{},
+		BlockedServices: &filtering.BlockedServices{
+			Schedule: schedule.EmptyWeekly(),
+			IDs:      profileBlockedServices,
+		},
+		UseOwnBlockedServices: true,
+	}, {
+		Name:              "uses_profile",
+		ClientProfileName: "test_profile",
+		ClientIDs:         []string{"uses_profile"},
+		BlockedServices: &filtering.BlockedServices{
+			Schedule: schedule.EmptyWeekly(),
+			IDs:      clientBlockedServices,
+		},
+		UseOwnBlockedServices: true,
 	}})
 
 	testCases := []struct {
@@ -193,6 +250,10 @@ func TestApplyAdditionalFiltering_blockedServices(t *testing.T) {
 		name:    "custom_settings_inactive_schedule",
 		id:      "allow_all",
 		wantLen: 0,
+	}, {
+		name:    "uses_profile_settings",
+		id:      "uses_profile",
+		wantLen: len(profileBlockedServices),
 	}}
 
 	for _, tc := range testCases {

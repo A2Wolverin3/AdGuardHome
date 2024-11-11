@@ -152,6 +152,9 @@ type clientObject struct {
 
 	Name string `yaml:"name"`
 
+	IsClientProfile   bool   `yaml:"isClientProfile"`
+	ClientProfileName string `yaml:"clientProfileName"`
+
 	IDs       []string `yaml:"ids"`
 	Tags      []string `yaml:"tags"`
 	Upstreams []string `yaml:"upstreams"`
@@ -191,6 +194,9 @@ func (o *clientObject) toPersistent(
 
 		UID: o.UID,
 
+		IsClientProfile:   o.IsClientProfile,
+		ClientProfileName: o.ClientProfileName,
+
 		UseOwnSettings:        !o.UseGlobalSettings,
 		FilteringEnabled:      o.FilteringEnabled,
 		ParentalEnabled:       o.ParentalEnabled,
@@ -203,9 +209,11 @@ func (o *clientObject) toPersistent(
 		UpstreamsCacheSize:    o.UpstreamsCacheSize,
 	}
 
-	err = cli.SetIDs(o.IDs)
-	if err != nil {
-		return nil, fmt.Errorf("parsing ids: %w", err)
+	if !o.IsClientProfile {
+		err = cli.SetIDs(o.IDs)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ids: %w", err)
+		}
 	}
 
 	if (cli.UID == client.UID{}) {
@@ -215,7 +223,7 @@ func (o *clientObject) toPersistent(
 		}
 	}
 
-	if o.SafeSearchConf.Enabled {
+	if o.safeSearchEnabled() {
 		logger := baseLogger.With(
 			slogutil.KeyPrefix, safesearch.LogPrefix,
 			safesearch.LogKeyClient, cli.Name,
@@ -253,6 +261,12 @@ func (o *clientObject) toPersistent(
 	return cli, nil
 }
 
+func (o *clientObject) safeSearchEnabled() bool {
+	// Profiles and Clients without profiles will SetSafeSearch according to configuration.
+	// Clients that use profiles will ultimately use their profile's SafeSearch settings.
+	return (o.IsClientProfile || o.ClientProfileName == "") && o.SafeSearchConf.Enabled
+}
+
 // forConfig returns all currently known persistent clients as objects for the
 // configuration file.
 func (clients *clientsContainer) forConfig() (objs []*clientObject) {
@@ -271,6 +285,9 @@ func (clients *clientsContainer) forConfig() (objs []*clientObject) {
 			Upstreams: slices.Clone(cli.Upstreams),
 
 			UID: cli.UID,
+
+			IsClientProfile:   cli.IsClientProfile,
+			ClientProfileName: cli.ClientProfileName,
 
 			UseGlobalSettings:        !cli.UseOwnSettings,
 			FilteringEnabled:         cli.FilteringEnabled,
@@ -332,9 +349,25 @@ func (clients *clientsContainer) clientOrArtificial(
 
 	cli, ok := clients.storage.FindLoose(ip, id)
 	if ok {
+		shouldIgnore := cli.IgnoreQueryLog
+
+		if len(cli.ClientProfileName) > 0 {
+			// TODO - consider doing this stuff (and stuff like IgnoreStatistics) in the storeage.find* functions
+			//		so it is applied consistently everywhere and not piecemeal like this. Or don't, since some
+			//		callers may wish to know the difference between hard settings and profile-populated settings.
+			// This should return default and not fall back on client values if profile is not found.
+			// The idea being that all client settings will be grayed out if using a profile, so whatever they
+			// are set to shouldn't matter since they can't be changed while using a profile.
+			profSettings, foundProfile := clients.storage.FindByName(cli.ClientProfileName)
+			if foundProfile {
+				shouldIgnore = profSettings.IgnoreQueryLog
+			} else {
+				shouldIgnore = false
+			}
+		}
 		return &querylog.Client{
 			Name:           cli.Name,
-			IgnoreQueryLog: cli.IgnoreQueryLog,
+			IgnoreQueryLog: shouldIgnore,
 		}, false
 	}
 
@@ -363,7 +396,17 @@ func (clients *clientsContainer) shouldCountClient(ids []string) (y bool) {
 	for _, id := range ids {
 		client, ok := clients.storage.Find(id)
 		if ok {
-			return !client.IgnoreStatistics
+			if client.ClientProfileName == "" {
+				return !client.IgnoreStatistics
+			} else {
+				// This should return default and not fall back on client values if profile is not found.
+				// The idea being that all client settings will be grayed out if using a profile, so whatever they
+				// are set to shouldn't matter since they can't be changed while using a profile.
+				profile, foundProfile := clients.storage.FindByName(client.ClientProfileName)
+				if foundProfile {
+					return !profile.IgnoreStatistics
+				}
+			}
 		}
 	}
 
@@ -386,7 +429,18 @@ func (clients *clientsContainer) UpstreamConfigByID(
 	c, ok := clients.storage.Find(id)
 	if !ok {
 		return nil, nil
-	} else if c.UpstreamConfig != nil {
+	} else if len(c.ClientProfileName) > 0 {
+		// This should fail or at least not fall back on client values if profile is not found.
+		// The idea being that all client settings will be grayed out if using a profile, so whatever they
+		// are set to shouldn't matter since they can't be changed while using a profile.
+		profile, foundProfile := clients.storage.FindByName(c.ClientProfileName)
+		if !foundProfile {
+			return nil, nil
+		}
+		c = profile
+	}
+
+	if c.UpstreamConfig != nil {
 		return c.UpstreamConfig, nil
 	}
 

@@ -150,12 +150,29 @@ const ClientsTable = ({
             tags: [],
             use_global_settings: true,
             use_global_blocked_services: true,
+            is_client_profile: false,
             blocked_services_schedule: {
                 time_zone: LOCAL_TIMEZONE_VALUE,
             },
             safe_search: { ...(globalSettings?.safesearch || {}) },
         };
     };
+
+    const getProfileButton = (pname: any) => {
+        return <button
+            type="button"
+            className="btn btn-outline-primary btn-sm mr-2"
+            onClick={() =>
+                toggleClientModal({
+                    type: MODAL_TYPE.EDIT_CLIENT,
+                    name: pname,
+                })
+            }
+            disabled={processingUpdating}
+            title={t('edit_table_action')}>
+            {pname}
+        </button>;
+    }
 
     const handleDelete = (data: any) => {
         // eslint-disable-next-line no-alert
@@ -179,7 +196,18 @@ const ClientsTable = ({
             accessor: 'ids',
             minWidth: 150,
             Cell: (row: any) => {
-                const { value } = row;
+                const { value, original } = row;
+
+                if (original.is_client_profile) {
+                    return (
+                        <div className="logs__row o-hidden">
+                            <span className="logs__text">
+                                <div>{`** Profile **`}</div>
+                                <div>{`  (No ID's)  `}</div>
+                            </span>
+                        </div>
+                    );
+                }
 
                 return (
                     <div className="logs__row o-hidden">
@@ -205,9 +233,14 @@ const ClientsTable = ({
             Header: t('settings'),
             accessor: 'use_global_settings',
             minWidth: 120,
-            Cell: ({ value }: any) => {
-                const title = value ? <Trans>settings_global</Trans> : <Trans>settings_custom</Trans>;
+            Cell: (row: any) => {
+                const prof = row.original.client_profile_name;
 
+                if (prof) {
+                    return getProfileButton(prof);
+                }
+
+                const title = row.value ? <Trans>settings_global</Trans> : <Trans>settings_custom</Trans>;
                 return (
                     <div className="logs__row o-hidden">
                         <div className="logs__text">{title}</div>
@@ -220,7 +253,17 @@ const ClientsTable = ({
             accessor: 'blocked_services',
             minWidth: 180,
             Cell: (row: any) => {
-                const { value, original } = row;
+                let { value, original } = row;
+                let style = "logs__row logs__row--icons";
+
+                if (original.client_profile_name) {
+                    const prof = clients.find((item: any) => original.client_profile_name === item.name);
+                    if (prof) {
+                        original = prof;
+                        value = prof.blocked_services;
+                        style = `${style} btn btn-outline-primary`;
+                    }
+                }
 
                 if (original.use_global_blocked_services) {
                     return <Trans>settings_global</Trans>;
@@ -228,7 +271,7 @@ const ClientsTable = ({
 
                 if (value && services.allServices) {
                     return (
-                        <div className="logs__row logs__row--icons">
+                        <div className={style}>
                             {value.map((service: any) => {
                                 const serviceInfo = getService(services.allServices, service);
 
@@ -258,9 +301,15 @@ const ClientsTable = ({
             Header: t('upstreams'),
             accessor: 'upstreams',
             minWidth: 120,
-            Cell: ({ value }: any) => {
+            Cell: (row: any) => {
+                const prof = row.original.client_profile_name;
+
+                if (prof) {
+                    return getProfileButton(prof);
+                }
+
                 const title =
-                    value && value.length > 0 ? <Trans>settings_custom</Trans> : <Trans>settings_global</Trans>;
+                    row.value && row.value.length > 0 ? <Trans>settings_custom</Trans> : <Trans>settings_global</Trans>;
 
                 return (
                     <div className="logs__row o-hidden">
@@ -274,21 +323,31 @@ const ClientsTable = ({
             accessor: 'tags',
             minWidth: 140,
             Cell: (row: any) => {
-                const { value } = row;
+                const { value, original } = row;
+                var prof;
 
-                if (!value || value.length < 1) {
-                    return '–';
+                const _make_tag_list = (tags: any) => (
+                    tags.map((tag: any) => (
+                        <div key={tag} title={tag} className="logs__tag small">
+                            {tag}
+                        </div>
+                    )));
+
+                if (original.client_profile_name) {
+                    prof = clients.find((item: any) => original.client_profile_name === item.name);
                 }
 
                 return (
                     <div className="logs__row o-hidden">
-                        <span className="logs__text">
-                            {value.map((tag: any) => (
-                                <div key={tag} title={tag} className="logs__tag small">
-                                    {tag}
+                        <div className="logs__text">
+                            {prof && <div>
+                                <div className="btn btn-outline-primary text-left">
+                                {_make_tag_list(prof.tags)}
                                 </div>
-                            ))}
-                        </span>
+                                <div className="text-center">+</div>
+                            </div>}
+                            {(!value || value.length < 1) ? '-' : _make_tag_list(value)}
+                        </div>
                     </div>
                 );
             },

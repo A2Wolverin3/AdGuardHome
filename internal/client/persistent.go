@@ -74,6 +74,11 @@ type Persistent struct {
 	// Name of the persistent client.  Must not be empty.
 	Name string
 
+	// ClientProfileName specifies the name of a profile to refer to for
+	// settings. Similar to using global settings, except not on a
+	// global scope.
+	ClientProfileName string
+
 	// Tags is a list of client tags that categorize the client.
 	Tags []string
 
@@ -106,6 +111,12 @@ type Persistent struct {
 
 	// UpstreamsCacheEnabled specifies whether custom upstreams are used.
 	UpstreamsCacheEnabled bool
+
+	// IsClientProfile specifies whether this "client" is a fake, no id
+	// profile that other real clients can point to for it's settings.
+	// This makes it easier to manage logical groups of many clients.
+	// When true, IP/MAC's should be empty.
+	IsClientProfile bool
 
 	// UseOwnSettings specifies whether custom filtering settings are used.
 	UseOwnSettings bool
@@ -140,20 +151,17 @@ func (c *Persistent) validate(ctx context.Context, l *slog.Logger, allTags []str
 	switch {
 	case c.Name == "":
 		return errors.Error("empty name")
-	case c.IDsLen() == 0:
+	case !c.IsClientProfile && c.IDsLen() == 0:
 		return errors.Error("id required")
 	case c.UID == UID{}:
 		return errors.Error("uid required")
+	case c.IsClientProfile && len(c.ClientProfileName) > 0:
+		return errors.Error("profiles cannot reference other profiles")
 	}
 
-	conf, err := proxy.ParseUpstreamsConfig(c.Upstreams, &upstream.Options{})
+	err = c.validateUpstreamsConfig(ctx, l)
 	if err != nil {
-		return fmt.Errorf("invalid upstream servers: %w", err)
-	}
-
-	err = conf.Close()
-	if err != nil {
-		l.ErrorContext(ctx, "client: closing upstream config", slogutil.KeyError, err)
+		return err
 	}
 
 	for _, t := range c.Tags {
@@ -167,6 +175,20 @@ func (c *Persistent) validate(ctx context.Context, l *slog.Logger, allTags []str
 	slices.Sort(c.Tags)
 
 	return nil
+}
+
+func (c *Persistent) validateUpstreamsConfig(ctx context.Context, l *slog.Logger) (err error) {
+	conf, err := proxy.ParseUpstreamsConfig(c.Upstreams, &upstream.Options{})
+	if err != nil {
+		return fmt.Errorf("invalid upstream servers: %w", err)
+	}
+
+	err = conf.Close()
+	if err != nil {
+		l.ErrorContext(ctx, "client: closing upstream config", slogutil.KeyError, err)
+	}
+
+	return err
 }
 
 // SetIDs parses a list of strings into typed fields and returns an error if
@@ -212,7 +234,7 @@ func subnetCompare(x, y netip.Prefix) (cmp int) {
 
 // setID parses id into typed field if there is no error.
 func (c *Persistent) setID(id string) (err error) {
-	if id == "" {
+	if id == "" && !c.IsClientProfile {
 		return errors.Error("clientid is empty")
 	}
 
@@ -309,6 +331,9 @@ func (c *Persistent) ShallowClone() (clone *Persistent) {
 	clone.Subnets = slices.Clone(c.Subnets)
 	clone.MACs = slices.Clone(c.MACs)
 	clone.ClientIDs = slices.Clone(c.ClientIDs)
+
+	clone.IsClientProfile = c.IsClientProfile
+	clone.ClientProfileName = c.ClientProfileName
 
 	return clone
 }
