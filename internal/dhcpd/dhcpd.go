@@ -112,6 +112,7 @@ func Create(conf *ServerConfig) (s *server, err error) {
 			HTTPRegister: conf.HTTPRegister,
 
 			Enabled:       conf.Enabled,
+			ShowExpired:   conf.ShowExpired,
 			InterfaceName: conf.InterfaceName,
 
 			LocalDomainName: conf.LocalDomainName,
@@ -159,6 +160,7 @@ func Create(conf *ServerConfig) (s *server, err error) {
 // servers, which is always false for corresponding server on any error.
 func (s *server) setServers(conf *ServerConfig) (v4Enabled, v6Enabled bool, err error) {
 	v4conf := conf.Conf4
+	v4conf.ShowExpired = conf.ShowExpired
 	v4conf.InterfaceName = s.conf.InterfaceName
 	v4conf.notify = s.onNotify
 	v4conf.Enabled = s.conf.Enabled && v4conf.RangeStart.IsValid()
@@ -173,6 +175,7 @@ func (s *server) setServers(conf *ServerConfig) (v4Enabled, v6Enabled bool, err 
 	}
 
 	v6conf := conf.Conf6
+	v6conf.ShowExpired = conf.ShowExpired
 	v6conf.InterfaceName = s.conf.InterfaceName
 	v6conf.notify = s.onNotify
 	v6conf.Enabled = s.conf.Enabled && len(v6conf.RangeStart) != 0
@@ -230,6 +233,7 @@ func (s *server) notify(flags int) {
 // WriteDiskConfig - write configuration
 func (s *server) WriteDiskConfig(c *ServerConfig) {
 	c.Enabled = s.conf.Enabled
+	c.ShowExpired = s.conf.ShowExpired
 	c.InterfaceName = s.conf.InterfaceName
 	c.LocalDomainName = s.conf.LocalDomainName
 

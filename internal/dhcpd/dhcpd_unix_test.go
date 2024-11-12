@@ -47,13 +47,18 @@ func TestDB(t *testing.T) {
 
 	leases := []*dhcpsvc.Lease{{
 		Expiry:   time.Now().Add(time.Hour),
-		Hostname: "static-1.local",
+		Hostname: "dynamic-1.local",
 		HWAddr:   net.HardwareAddr{0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA},
 		IP:       netip.MustParseAddr("192.168.10.100"),
 	}, {
 		Hostname: "static-2.local",
 		HWAddr:   net.HardwareAddr{0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB},
 		IP:       netip.MustParseAddr("192.168.10.101"),
+	}, {
+		Expiry:   time.Now().Add(-time.Hour),
+		Hostname: "dynamic-expired.local",
+		HWAddr:   net.HardwareAddr{0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xDD},
+		IP:       netip.MustParseAddr("192.168.10.103"),
 	}}
 
 	srv4, ok := s.srv4.(*v4Server)
@@ -63,6 +68,9 @@ func TestDB(t *testing.T) {
 	require.NoError(t, err)
 
 	err = s.srv4.AddStaticLease(leases[1])
+	require.NoError(t, err)
+
+	err = srv4.addLease(leases[2])
 	require.NoError(t, err)
 
 	err = s.dbStore()
@@ -75,15 +83,25 @@ func TestDB(t *testing.T) {
 	require.NoError(t, err)
 
 	ll := s.srv4.GetLeases(LeasesAll)
-	require.Len(t, ll, len(leases))
+	require.Len(t, ll, len(leases)-1) // Not the expired one
 
 	assert.Equal(t, leases[0].HWAddr, ll[0].HWAddr)
 	assert.Equal(t, leases[0].IP, ll[0].IP)
 	assert.Equal(t, leases[0].Expiry.Unix(), ll[0].Expiry.Unix())
+	assert.False(t, ll[0].IsStatic)
 
 	assert.Equal(t, leases[1].HWAddr, ll[1].HWAddr)
 	assert.Equal(t, leases[1].IP, ll[1].IP)
 	assert.True(t, ll[1].IsStatic)
+
+	s.conf.ShowExpired = true
+	s.conf.Conf4.ShowExpired = true
+	srv4.conf.ShowExpired = true
+	ll = s.srv4.GetLeases(LeasesAll)
+	require.Len(t, ll, len(leases)) // Expired is included now
+	srv4.conf.ShowExpired = false
+	s.conf.Conf4.ShowExpired = false
+	s.conf.ShowExpired = false
 }
 
 func TestV4Server_badRange(t *testing.T) {

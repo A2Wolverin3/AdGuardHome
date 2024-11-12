@@ -5,11 +5,14 @@ package dhcpd
 import (
 	"bytes"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"testing"
+	"time"
 
+	"github.com/AdguardTeam/AdGuardHome/internal/dhcpsvc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,12 +86,34 @@ func TestServer_handleDHCPStatus(t *testing.T) {
 		Hostname: staticName,
 	}
 
+	dynLease := &dhcpsvc.Lease{
+		Hostname: "dynamic-expired.local",
+		HWAddr:   net.HardwareAddr{0xBB, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB},
+		IP:       netip.MustParseAddr("192.168.10.151"),
+		Expiry:   time.Now().Add(-time.Hour * 24),
+	}
+
+	expiredLease := &leaseDynamic{
+		Hostname:  "dynamic-expired.local",
+		HWAddr:    "bb:aa:aa:aa:aa:bb",
+		IP:        netip.MustParseAddr("192.168.10.151"),
+		Expiry:    time.Now().Add(-time.Hour * 24).Format(time.RFC3339),
+		IsExpired: true,
+	}
+
 	s, err := Create(&ServerConfig{
 		Enabled:        true,
 		Conf4:          *defaultV4ServerConf(),
 		DataDir:        t.TempDir(),
 		ConfigModified: func() {},
 	})
+	require.NoError(t, err)
+
+	// Sneak an expired dynamic lease in there. Shouldn't affect anything until
+	// we ask to include expired leases.
+	srv4, isV4Server := s.srv4.(*v4Server)
+	require.True(t, isV4Server)
+	err = srv4.addLease(dynLease)
 	require.NoError(t, err)
 
 	ok := t.Run("status", func(t *testing.T) {
@@ -124,6 +149,20 @@ func TestServer_handleDHCPStatus(t *testing.T) {
 		checkStatus(t, s, resp)
 	})
 	require.True(t, ok)
+
+	s.conf.ShowExpired = true
+	s.conf.Conf4.ShowExpired = true
+	srv4.conf.ShowExpired = true
+	ok = t.Run("show_expired", func(t *testing.T) {
+		resp := defaultResponse()
+		resp.Leases = []*leaseDynamic{expiredLease}
+
+		checkStatus(t, s, resp)
+	})
+	require.True(t, ok)
+	srv4.conf.ShowExpired = false
+	s.conf.Conf4.ShowExpired = false
+	s.conf.ShowExpired = false
 
 	ok = t.Run("set_config", func(t *testing.T) {
 		w := httptest.NewRecorder()

@@ -18,13 +18,24 @@ interface LeasesProps {
 }
 
 class Leases extends Component<LeasesProps> {
-    cellWrap = ({ value }: any) => (
-        <div className="logs__row o-hidden">
-            <span className="logs__text" title={value}>
-                {value}
-            </span>
-        </div>
-    );
+    cellWrap = ({ original, value }: any) => {
+        if (original.is_expired) {
+            return (
+                <div className="logs__row o-hidden">
+                    <span className="logs__text" title={value}>
+                        <s>{value}</s>
+                    </span>
+                </div>
+            );
+        }
+        return (
+            <div className="logs__row o-hidden">
+                <span className="logs__text" title={value}>
+                    {value}
+                </span>
+            </div>
+        );
+    };
 
     convertToStatic = (data: any) => () => {
         const { dispatch } = this.props;
@@ -45,7 +56,7 @@ class Leases extends Component<LeasesProps> {
                     className="btn btn-icon btn-icon--green btn-outline-success btn-sm"
                     title={t('make_static')}
                     onClick={this.convertToStatic(row)}
-                    disabled={disabledLeasesButton}>
+                    disabled={row.is_expired || disabledLeasesButton}>
                     <svg className="icons icon12">
                         <use xlinkHref="#plus" />
                     </svg>
@@ -56,9 +67,10 @@ class Leases extends Component<LeasesProps> {
 
     render() {
         const { leases, t } = this.props;
+        const sortedLeases = (leases || []).sort((a: any, b: any) => (a.is_expired != b.is_expired) ? (a.is_expired ? 1 : -1) : (a > b ? 1 : ((a < b) ? -1 : 0)))
         return (
             <ReactTable
-                data={leases || []}
+                data={sortedLeases}
                 columns={[
                     {
                         Header: 'MAC',

@@ -211,7 +211,7 @@ func (s *v4Server) GetLeases(flags GetLeasesFlags) (leases []*dhcpsvc.Lease) {
 
 	now := time.Now()
 	for _, l := range s.leases {
-		if getDynamic && l.Expiry.After(now) && !s.isBlocklisted(l) {
+		if getDynamic && (s.conf.ShowExpired || l.Expiry.After(now)) && !s.isBlocklisted(l) {
 			leases = append(leases, l.Clone())
 
 			continue

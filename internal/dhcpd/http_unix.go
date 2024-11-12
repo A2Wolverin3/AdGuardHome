@@ -109,16 +109,18 @@ func (l *leaseStatic) toLease() (lease *dhcpsvc.Lease, err error) {
 
 // leaseDynamic is the JSON form of dynamic DHCP lease.
 type leaseDynamic struct {
-	HWAddr   string     `json:"mac"`
-	IP       netip.Addr `json:"ip"`
-	Hostname string     `json:"hostname"`
-	Expiry   string     `json:"expires"`
+	HWAddr    string     `json:"mac"`
+	IP        netip.Addr `json:"ip"`
+	Hostname  string     `json:"hostname"`
+	Expiry    string     `json:"expires"`
+	IsExpired bool       `json:"is_expired"`
 }
 
 // leasesToDynamic converts list of leases to their JSON form.
 func leasesToDynamic(leases []*dhcpsvc.Lease) (dynamic []*leaseDynamic) {
 	dynamic = make([]*leaseDynamic, len(leases))
 
+	now := time.Now()
 	for i, l := range leases {
 		dynamic[i] = &leaseDynamic{
 			HWAddr:   l.HWAddr.String(),
@@ -128,7 +130,8 @@ func leasesToDynamic(leases []*dhcpsvc.Lease) (dynamic []*leaseDynamic) {
 			// value.
 			//
 			// See https://github.com/AdguardTeam/AdGuardHome/issues/2692.
-			Expiry: l.Expiry.Format(time.RFC3339),
+			Expiry:    l.Expiry.Format(time.RFC3339),
+			IsExpired: !l.Expiry.After(now),
 		}
 	}
 

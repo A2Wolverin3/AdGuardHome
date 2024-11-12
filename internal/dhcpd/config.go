@@ -22,6 +22,7 @@ type ServerConfig struct {
 	HTTPRegister aghhttp.RegisterFunc `yaml:"-"`
 
 	Enabled       bool   `yaml:"enabled"`
+	ShowExpired   bool   `yaml:"show_expired"`
 	InterfaceName string `yaml:"interface_name"`
 
 	// LocalDomainName is the domain name used for DHCP hosts.  For example, a
@@ -88,6 +89,7 @@ type DHCPServer interface {
 // V4ServerConf - server configuration
 type V4ServerConf struct {
 	Enabled       bool   `yaml:"-" json:"-"`
+	ShowExpired   bool   `yaml:"-" json:"-"`
 	InterfaceName string `yaml:"-" json:"-"`
 
 	GatewayIP  netip.Addr `yaml:"gateway_ip" json:"gateway_ip"`
@@ -227,6 +229,7 @@ func (c *V4ServerConf) Validate() (err error) {
 // V6ServerConf - server configuration
 type V6ServerConf struct {
 	Enabled       bool   `yaml:"-" json:"-"`
+	ShowExpired   bool   `yaml:"-" json:"-"`
 	InterfaceName string `yaml:"-" json:"-"`
 
 	// The first IP address for dynamic leases
