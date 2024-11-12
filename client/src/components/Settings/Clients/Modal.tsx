@@ -8,6 +8,13 @@ import { MODAL_TYPE } from '../../../helpers/constants';
 import Form from './Form';
 
 const getInitialData = ({ initial, modalType, clientId, clientName }: any) => {
+    if (initial && modalType !== MODAL_TYPE.EDIT_CLIENT) {
+        clientId = null;
+        clientName = null;
+        initial.name = null;
+        initial.ids = [];
+    }
+
     if (initial && initial.blocked_services) {
         const { blocked_services } = initial;
         const blocked = {};

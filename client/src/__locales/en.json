@@ -193,6 +193,7 @@
     "last_time_updated_table_header": "Last time updated",
     "actions_table_header": "Actions",
     "request_table_header": "Request",
+    "copy_table_action": "Copy",
     "edit_table_action": "Edit",
     "delete_table_action": "Delete",
     "elapsed": "Elapsed",

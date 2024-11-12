@@ -384,6 +384,22 @@ const ClientsTable = ({
                             className="btn btn-icon btn-outline-primary btn-sm mr-2"
                             onClick={() =>
                                 toggleClientModal({
+                                    type: MODAL_TYPE.ADD_CLIENT,
+                                    name: clientName,
+                                })
+                            }
+                            disabled={processingUpdating}
+                            title={t('copy_table_action')}>
+                            <svg className="icons icon12">
+                                <use xlinkHref="#copy" />
+                            </svg>
+                        </button>
+
+                        <button
+                            type="button"
+                            className="btn btn-icon btn-outline-primary btn-sm mr-2"
+                            onClick={() =>
+                                toggleClientModal({
                                     type: MODAL_TYPE.EDIT_CLIENT,
                                     name: clientName,
                                 })
