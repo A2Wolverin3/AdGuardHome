@@ -115,6 +115,7 @@ func (clients *clientsContainer) Init(
 		ARPDB:                  arpDB,
 		ARPClientsUpdatePeriod: arpClientsUpdatePeriod,
 		RuntimeSourceDHCP:      config.Clients.Sources.DHCP,
+		AllowedTags:            config.AllowedTags,
 	})
 	if err != nil {
 		return fmt.Errorf("init client storage: %w", err)

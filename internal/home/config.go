@@ -11,6 +11,7 @@ import (
 	"github.com/AdguardTeam/AdGuardHome/internal/aghalg"
 	"github.com/AdguardTeam/AdGuardHome/internal/aghos"
 	"github.com/AdguardTeam/AdGuardHome/internal/aghtls"
+	"github.com/AdguardTeam/AdGuardHome/internal/client"
 	"github.com/AdguardTeam/AdGuardHome/internal/configmigrate"
 	"github.com/AdguardTeam/AdGuardHome/internal/dhcpd"
 	"github.com/AdguardTeam/AdGuardHome/internal/dnsforward"
@@ -132,6 +133,9 @@ type configuration struct {
 	TLS      tlsConfigSettings `yaml:"tls"`
 	QueryLog queryLogConfig    `yaml:"querylog"`
 	Stats    statsConfig       `yaml:"statistics"`
+
+	// Allow client tags to be configured, which would in turn allow custom tags to be added (albeit not live, but only via config)
+	AllowedTags []string `yaml:"allowedTags"`
 
 	// Filters reflects the filters from [filtering.Config].  It's cloned to the
 	// config used in the filtering module at the startup.  Afterwards it's
@@ -455,6 +459,7 @@ var config = &configuration{
 			LeaseDuration: dhcpd.DefaultDHCPLeaseTTL,
 		},
 	},
+	AllowedTags: client.AllowedTagsDefault,
 	Clients: &clientsConfig{
 		Sources: &clientSourcesConfig{
 			WHOIS:     true,
@@ -668,6 +673,8 @@ func (c *configuration) write() (err error) {
 		config.QueryLog.MemSize = dc.MemSize
 		config.QueryLog.Ignored = dc.Ignored.Values()
 	}
+
+	config.AllowedTags = Context.allowedTags
 
 	if Context.filters != nil {
 		Context.filters.WriteDiskConfig(config.Filtering)

@@ -50,15 +50,16 @@ type homeContext struct {
 	// Modules
 	// --
 
-	clients    clientsContainer     // per-client-settings module
-	stats      stats.Interface      // statistics module
-	queryLog   querylog.QueryLog    // query log module
-	dnsServer  *dnsforward.Server   // DNS module
-	dhcpServer dhcpd.Interface      // DHCP module
-	auth       *Auth                // HTTP authentication module
-	filters    *filtering.DNSFilter // DNS filtering module
-	web        *webAPI              // Web (HTTP, HTTPS) module
-	tls        *tlsManager          // TLS module
+	clients     clientsContainer     // per-client-settings module
+	stats       stats.Interface      // statistics module
+	queryLog    querylog.QueryLog    // query log module
+	dnsServer   *dnsforward.Server   // DNS module
+	dhcpServer  dhcpd.Interface      // DHCP module
+	auth        *Auth                // HTTP authentication module
+	filters     *filtering.DNSFilter // DNS filtering module
+	web         *webAPI              // Web (HTTP, HTTPS) module
+	tls         *tlsManager          // TLS module
+	allowedTags []string             // Allowed Tags
 
 	// etcHosts contains IP-hostname mappings taken from the OS-specific hosts
 	// configuration files, for example /etc/hosts.
@@ -300,6 +301,8 @@ func initContextClients(ctx context.Context, logger *slog.Logger) (err error) {
 		// Enabled() instead.
 		return fmt.Errorf("initing dhcp: %w", err)
 	}
+
+	Context.allowedTags = config.AllowedTags
 
 	var arpDB arpdb.Interface
 	if config.Clients.Sources.ARP {

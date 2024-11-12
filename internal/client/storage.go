@@ -19,8 +19,8 @@ import (
 	"github.com/AdguardTeam/golibs/logutil/slogutil"
 )
 
-// allowedTags is the list of available client tags.
-var allowedTags = []string{
+// AllowedTagsDefault is the list of available client tags.
+var AllowedTagsDefault = []string{
 	"device_audio",
 	"device_camera",
 	"device_gameconsole",
@@ -99,6 +99,10 @@ type StorageConfig struct {
 	// ARPDB is used to update [SourceARP] runtime client information.
 	ARPDB arpdb.Interface
 
+	// AllowedTags specifies the list of client tags which can be assigned.
+	// If nil or empty, the default 'allowedTags' list above will be used.
+	AllowedTags []string
+
 	// InitialClients is a list of persistent clients parsed from the
 	// configuration file.  Each client must not be nil.
 	InitialClients []*Persistent
@@ -156,7 +160,10 @@ type Storage struct {
 
 // NewStorage returns initialized client storage.  conf must not be nil.
 func NewStorage(ctx context.Context, conf *StorageConfig) (s *Storage, err error) {
-	tags := slices.Clone(allowedTags)
+	tags := slices.Clone(AllowedTagsDefault)
+	if len(conf.AllowedTags) > 0 {
+		tags = slices.Clone(conf.AllowedTags)
+	}
 	slices.Sort(tags)
 
 	s = &Storage{

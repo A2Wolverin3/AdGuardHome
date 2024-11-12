@@ -5,6 +5,7 @@ import (
 	"net/netip"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -560,6 +561,67 @@ func mustParseMAC(s string) (mac net.HardwareAddr) {
 	return mac
 }
 
+func tagFilter(tags []string, prefix string) (ret []string) {
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, prefix) {
+			ret = append(ret, tag)
+		}
+	}
+	return ret
+}
+
+func TestStorage_AllowedTags(t *testing.T) {
+	// Default list is provided if none configured
+	t.Run("default_tags", func(t *testing.T) {
+		ctx := testutil.ContextWithTimeout(t, testTimeout)
+		storage, err := client.NewStorage(ctx, &client.StorageConfig{
+			Logger: slogutil.NewDiscardLogger(),
+		})
+		require.NoError(t, err)
+
+		tags := storage.AllowedTags()
+		require.True(t, slices.IsSorted(tags))
+		require.Equal(t, 3, len(tagFilter(tags, "user_")))
+		require.Equal(t, 6, len(tagFilter(tags, "os_")))
+		require.Equal(t, 12, len(tagFilter(tags, "device_")))
+
+		// Expected tags can be found
+		_, ok := slices.BinarySearch(tags, "user_admin")
+		require.True(t, ok)
+
+		// Unexpected tags not found
+		_, ok = slices.BinarySearch(tags, "not_found")
+		require.False(t, ok)
+	})
+
+	// Configured list - does not include default, unless it does
+	t.Run("custom_tags", func(t *testing.T) {
+		ctx := testutil.ContextWithTimeout(t, testTimeout)
+		storage, err := client.NewStorage(ctx, &client.StorageConfig{
+			AllowedTags: []string{"tag1", "tag2", "user_admin", "user_dog"},
+		})
+		require.NoError(t, err)
+
+		tags := storage.AllowedTags()
+		require.True(t, slices.IsSorted(tags))
+		require.Equal(t, 4, len(tags))
+		require.Equal(t, 2, len(tagFilter(tags, "user_")))
+		require.Equal(t, 2, len(tagFilter(tags, "tag")))
+		require.Equal(t, 0, len(tagFilter(tags, "os_")))
+		require.Equal(t, 0, len(tagFilter(tags, "device_")))
+
+		// Expected tags can be found
+		_, ok := slices.BinarySearch(tags, "user_admin")
+		require.True(t, ok)
+		_, ok = slices.BinarySearch(tags, "user_dog")
+		require.True(t, ok)
+
+		// Unexpected tags not found
+		_, ok = slices.BinarySearch(tags, "user_child")
+		require.False(t, ok)
+	})
+}
+
 func TestStorage_Add(t *testing.T) {
 	const (
 		existingName     = "existing_name"
@@ -785,6 +847,7 @@ func TestStorage_RemoveByName(t *testing.T) {
 		IsClientProfile: true,
 		UID:             client.MustNewUID(),
 	}
+
 	usesProfileClient := &client.Persistent{
 		Name:              usesProfileName,
 		ClientProfileName: profileName,
